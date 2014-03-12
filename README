@@ -1,0 +1,65 @@
+All-Thing
+=========
+
+Continuous, high-resolution monitoring system for HPC/cloud environments
+
+Current state: design/pre-alpha
+
+All-Thing is a monitoring system similar to Ganglia in scope and function with
+a few major and minor differences. In short, it is two daemons, one monitor or
+reporting daemon and one listening daemon where all monitored data is kept in
+aggregate. The listening daemon runs a service that allows for queries of
+performance data on all member nodes. It includes a web front-end for real-time
+viewing of data, a command-line tool for querying data from a shell, and agents
+for committing data to various databases. I currently plan on allowing for the
+distribution of listening daemons with data concurrency between them but that
+will happen much later.
+
+Features:
+
+* Continuous monitoring of nodes limited only by the bandwidth, memory and CPU
+  available to the master daemon(s). For practical purposes, this could be tens
+  of thousands of nodes. Perhaps hundreds of thousands in beefy environments.
+* Recording of time-series data to a database (MySQL, whatever) according to
+  user configuration. Prototyping to be done with MySQL. Support for other
+  formats will not be at all difficult to implement since database activities 
+  are rather simple.
+* Elegant, intuitive web application for watching node data in real-time and for
+  analyzing historical time-series data on all monitored attributes.
+* Node performance report generating within web application.
+* Data transfer from reporting daemons to master daemon is in JSON format. I
+  though about fancy containers and even binary chunks but I like the
+  flexability of JSON since I may want to reimpliment the master process in
+  Python (yeah, that's backwards).
+* Data service uses JSON for queries and data transfer. Since the end target
+  is a web application, JSON is used everywhere on the wire.
+* The JANSSON library is used to manage JSON data in the C portions of the code.
+* 
+
+Compared to Ganglia:
+
+* Like Ganglia, this is a continuous monitoring system that commits data to a
+  database for analysis.
+* It is currently designed to work in a much less extensible manner making it
+  easier to configure and use
+* It uses no plug-in architecture for extending the data it collects however
+  what it collects and reports can be configured. Extending capabilities 
+  in C can't be more difficult than enabling a plug-in arch.
+* It consists of two very separate daemons: a reporting daemon and a
+  collection daemon. As opposed to Ganglia in which the binary is the same
+  and daemons are designated as "deaf" or "mute."
+* Monitor traffic is JSON. Ganglia uses XDR which is more suitable for the
+  extensible nature of that project, but adds some complexity I don't want to
+  deal with.
+* Monitor daemon is extremely light-weight and is designed to collect data
+  at frequent intervals without detectably impacting running jobs. The default
+  interval is every five seconds. This daemon was benchmarked using hosts
+  running large molecular dynamics jobs. There was no impact on the
+  performance (wall time) of the jobs over a multi-month time-scale. This was
+  the goal of the first versions of this software.
+* Use case will be different. This is simply a real-time monitor for lots of
+  hosts in the same interface. This makes it great for scientific and HPC 
+  environments where developers/scientists can watch their jobs for problems
+  that could impact the efficenty of their work. I've found that scaling and
+  I/O constraint issues often go unnoticed in these environments.
+
