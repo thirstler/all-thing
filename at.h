@@ -39,7 +39,9 @@
 #define UDP_SEND_SZ 512
 #define MASTER_ASMBL_BUF_AGE 15
 #define ASMBL_BUF_PRUNE_COUNT 500
+#define DATA_STRUCT_AR_SIZE 65536
 
+/* poll flags */
 #define POLL_CPU         0x00000001
 #define POLL_MEM         0x00000002
 #define POLL_IODEV       0x00000004
@@ -49,13 +51,53 @@
 #define POLL_FS          0x00000040
 #define RPRT_CPU_SSTATIC 0x00000080
 
-#define ASMBL_BUFFER_COMPLETE   0x00000001
-#define ASMBL_BUFFER_INCOMPLETE 0x00000002
+/* packet assembly buffer errors */
+int asmblerr;
+#define ASMBL_BUFFER_COMPLETE   0x00000000
+#define ASMBL_BUFFER_SUCCESS    0x00000000
+#define ASMBL_BUFFER_FOUND      0x00000000
+#define ASMBL_BUFFER_INCOMPLETE 0x00000001
+#define ASMBL_BUFFER_NOT_FOUND  0x00000002
+#define ASMBL_BUFFER_BAD_MSG    0x00000003
+
+#define AT_MASTER_HELP "\n\
+Use: at_master [OPTION]\n\
+Start the all-thing master daemon.\n\
+\n\
+Arguments:\n\
+  -h, --help            this help\n\
+  -D, --nofork          do not fork into a daemon (useful for debugging)\n\
+  -p, --port=PORT       change node-listening port\n\
+  -s, --server=PORT     change port for data service\n\
+  -r, --monitor=RATE    change monitoring rate\n\
+  -c, --config=FILE     get configuration from specified file\n\
+  -d, --debug=LEVEL     specify a debug level (0-7)\n\
+\n\
+"
+
+#define AT_AGENT_HELP "\n\
+Use: at_agent [OPTION]\n\
+Start the all-thing agent daemon.\n\
+\n\
+Arguments:\n\
+  -h, --help            this help\n\
+  -D, --nofork          do not fork into a daemon (usefule for debugging)\n\
+  -p, --port=PORT       change the reporting port\n\
+  -t, --target=HOST     change target (at_master) host for data reports\n\
+  -i, --forceid=ID      use arbitrary string for node ID (text is hashed to\n\
+                        generate node ID)\n\
+  -r, --pollrate=MS     change system information gathering poll rate, rate\n\
+                        is set in milliseconds\n\
+  -c, --config=FILE     use a different config file\n\
+  -d, --debug=LEVEL     specify a debug level (0-7)\n\
+\n\
+"
 
 /* Typed definitions */
 #include <sys/types.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <jansson.h>
 
 /* Macros */
 
@@ -74,6 +116,7 @@
         free(node);\
     }\
 }
+
 typedef struct cpu_inf_calc_s {
     uint64_t user;
     uint64_t nice;
@@ -92,14 +135,14 @@ typedef struct cpu_inf_s {
     char *vendor_id;
     char *model;
     char *flags;
-    char cache_units[4];
+    char *cache_units;
     u_int cache;
     u_int phy_id;
     u_int siblings;
     u_int core_id;
     u_int cpu_cores;
     float bogomips;
-    float clock;
+    float cpuMhz;
     uint64_t user;
     uint64_t nice;
     uint64_t system;
@@ -110,6 +153,7 @@ typedef struct cpu_inf_s {
     uint64_t steal;
     uint64_t guest;
     uint64_t guest_nice;
+    void *prev;
     void *next;
 
     cpu_inf_calc_t *calc;
@@ -155,6 +199,7 @@ typedef struct iface_inf_s {
     uint64_t trns_colls;
     uint64_t trns_carrier;
     uint64_t trns_compressed;
+    void *prev;
     void *next;
 
     iface_inf_calc_t *calc;
@@ -189,6 +234,7 @@ typedef struct iodev_inf_s {
     uint64_t current_ios;
     uint64_t msec_ios;
     uint64_t weighted_ios;
+    void *prev;
     void *next;
 
     iodev_inf_calc_t *calc;
@@ -197,7 +243,7 @@ typedef struct iodev_inf_s {
 
 typedef struct fsinf_s {
     char *mountpoint;
-    char *device;
+    char *dev;
     char *fstype;
     uint64_t block_size;
     uint64_t blks_total;
@@ -205,6 +251,7 @@ typedef struct fsinf_s {
     uint64_t blks_avail;
     uint64_t inodes_ttl;
     uint64_t inodes_free;
+    void *prev;
     void *next;
 } fsinf_t;
 
@@ -229,7 +276,7 @@ typedef struct sysinf_calc_s {
 
 typedef struct sysinf_s {
     char *hostname;
-    unsigned int id;
+    uint64_t id;
     struct timeval sample_tv;
 
     /* Load and process information */
@@ -266,22 +313,19 @@ typedef struct sysinf_s {
 
     /* Dynamic device info */
     cpu_inf_t *cpu;
-    size_t cpu_count;        /* unused in agent */
+    size_t cpu_count;    /* unused in agent */
 
     iface_inf_t *iface;
-    size_t iface_count;        /* unused in agent */
+    size_t iface_count;  /* unused in agent */
 
     iodev_inf_t *iodev;
-    size_t iodev_count;        /* unused in agent */
+    size_t iodev_count;  /* unused in agent */
 
     fsinf_t *fsinf;
-    size_t fsinf_count;        /* unused in agent */
+    size_t fsinf_count;  /* unused in agent */
 
     /* Calculated */
-    sysinf_calc_t *calc;    /* unused in agent */
-
-    void *next;                /* unused in agent */
-    void *prev;                /* unused in agent */
+    sysinf_calc_t *calc; /* unused in agent */
 
 } sysinf_t;
 
@@ -314,6 +358,7 @@ typedef struct master_config_s {
     char *runuser;
     char daemon;
     int rprt_hndlrs;
+    int log_level;
 
 } master_config_t;
 
@@ -338,9 +383,8 @@ typedef struct rprt_hdr_s {
 
 
 typedef struct master_global_data_s {
-    pthread_mutex_t dispatcher; // The only unique data
-    pthread_mutex_t *system_data_mutex;
     sysinf_t **system_data;
+    size_t system_data_sz;
 } master_global_data_t;
 
 /* Global statistics */
@@ -419,5 +463,37 @@ void *report_listener(void *dptr);
 /******************************************************************************
  * Master data ops ***********************************************************/
 
-void get_data_buffer();
+/**
+ * Take a JSON object and return a sysinf_t struct pointer if "target" is
+ * NULL, otherwise apply data to "target" (add still return the affected
+ * object.
+ */
+sysinf_t* dataobj_from_json(uint64_t id, json_t *root, sysinf_t *target);
+
+/**
+ * Fetch data object with ID "id" from the master system data object
+ */
+inline  sysinf_t* get_data_obj(uint64_t id, master_global_data_t* data);
+
+/**
+ * Slip new data object "new" into the master system data object
+ */
+inline int add_new_data_obj(master_global_data_t *data, sysinf_t *new);
+
+/**
+ * Remove data object "id" from the master system data object
+ */
+inline int rm_data_obj(uint64_t id, master_global_data_t *data);
+
+/**
+ * Free a data object (does not manage array)
+ */
+inline void free_data_obj(sysinf_t *dobj);
+
+/**
+ * Calculate data-rates from counters by subtracting "to" from "from" and
+ * apply them to "to"
+ */
+int calc_counters(sysinf_t *from, sysinf_t *to);
+
 

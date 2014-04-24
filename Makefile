@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS:=-g -m64 -O1 -Wall
+CFLAGS:=-g -m64 -Wall
 LDFLAGS:=-g -lm -ljansson 
 LDFLAGS_T:=$(LDFLAGS) -lpthread
 DESTDIR:=
@@ -71,5 +71,5 @@ at_master-tar:
 	rm -rf ./all-thing-master-${VER}
 		
 clean:
-	rm -f *.o at_agent at_master *.tar
+	rm -f *.o at_agent at_master *.tar core.*
 	

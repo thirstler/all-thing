@@ -54,6 +54,7 @@ static void set_cfg_defaults(master_config_t* cfg)
     cfg->runuser = strdup(DEFAULT_RUNUSER);
     cfg->config_file = strdup(DEFAULT_CONFIG);
     cfg->daemon = 1;
+    cfg->log_level = 4;
 }
 
 static void quitit(int signal)
@@ -67,9 +68,15 @@ static void reinit(int signal)
 
 }
 
-static void clear_data_master(master_global_data_t **data_master)
+static void clear_data_master(master_global_data_t *data_master)
 {
-    free(*data_master);
+	size_t i;
+
+	for(i = 0; i < data_master->system_data_sz; i += 1) {
+		free_data_obj(data_master->system_data[i]);
+	}
+	free(data_master->system_data);
+	free(data_master);
 }
 
 int main(int argc, char *argv[])
@@ -93,10 +100,22 @@ int main(int argc, char *argv[])
     }
 
     /* See what the command line has to say.... */
-    while ((rc = getopt (argc, argv, "Dp:r:c:")) != -1) {
+    while ((rc = getopt (argc, argv, "hDp:r:c:")) != -1) {
         switch(rc) {
+        case 'h':
+            printf("%s", AT_MASTER_HELP);
+            return EXIT_SUCCESS;
+            break;
         case 'D':
             cfg->daemon = 0;
+            break;
+        case 'd':
+            cfg->log_level = atoi(optarg);
+            if(cfg->log_level < 0 || cfg->log_level > 7) {
+            	fprintf(stderr,
+            			"log-level makes no sense, setting to LOG_WARN\n");
+            	cfg->log_level = 4;
+            }
             break;
         case 'p':
             cfg->listen_port = strdup(optarg);
@@ -106,6 +125,7 @@ int main(int argc, char *argv[])
             break;
         case 'c':
             cfg->config_file = strdup(optarg);
+            /* Ok, we're doing this again (order is important!) */
             if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
                 syslog(LOG_ERR, "Can't load '%s'", cfg->config_file);
             }
@@ -124,7 +144,7 @@ int main(int argc, char *argv[])
         setreuid(mememe->pw_uid, mememe->pw_uid);
         setregid(mememe->pw_gid, mememe->pw_gid);
     } else {
-        syslog(LOG_ERR, "running as root! please configure a user");
+        syslog(LOG_ERR, "running as root (YUCK!), please configure a user");
     }
 
     /* forking */
@@ -140,6 +160,20 @@ int main(int argc, char *argv[])
         openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
     }
 
+    /* Set the log mask */
+    rc = 0;
+    switch(cfg->log_level) {
+    case 7: rc |= LOG_DEBUG;
+    case 6: rc |= LOG_INFO;
+    case 5: rc |= LOG_NOTICE;
+    case 4: rc |= LOG_WARNING;
+    case 3: rc |= LOG_ERR;
+    case 2: rc |= LOG_CRIT;
+    case 1: rc |= LOG_ALERT;
+    case 0: rc |= LOG_EMERG;
+    }
+    setlogmask(rc);
+
     syslog (LOG_INFO, "starting");
 
         /* Handle some signals */
@@ -149,7 +183,6 @@ int main(int argc, char *argv[])
                 signal (SIGTERM, SIG_IGN);
     if (signal (SIGHUP, reinit) == SIG_IGN)
             signal (SIGHUP, SIG_IGN);
-
 
     data_master = malloc(sizeof(master_global_data_t));
     data_master->system_data = NULL;
@@ -166,7 +199,7 @@ int main(int argc, char *argv[])
 
     pthread_join(node_listen, NULL);
 
-    clear_data_master(&data_master);
+    clear_data_master(data_master);
 
     return EXIT_SUCCESS;
 }

@@ -21,7 +21,7 @@ cpu_inf_t* del_cpu(cpu_inf_t* cpu, u_int proc)
             if(cpu->flags != NULL) free(cpu->flags);
             if(cpu->model != NULL) free(cpu->model);
             if(cpu->vendor_id != NULL) free(cpu->vendor_id);
-
+            if(cpu->cache_units != NULL) free(cpu->cache_units);
             LIST_UNLINK(cpu);
 
             break;
@@ -42,9 +42,9 @@ inline char* get_cpuinfstr(char* buffer)
     return NULL;
 }
 
+/* Just dups the string and overwrites the newline char */
 #define SET_CPUINF_STR_VAL(tgt, src) {\
-    tgt = malloc(strlen(src)+sizeof(char));\
-    strcpy(tgt, src);\
+    tgt = strdup(src);\
     tgt[strlen(src)-1] = '\0';\
 }
 
@@ -72,13 +72,13 @@ void init_proc(cpu_inf_t* cpu)
         if( strstr(linebuf, "flags") != NULL )
             SET_CPUINF_STR_VAL(cpu->flags, get_cpuinfstr(linebuf));
 
+        cpu->cache_units = malloc(sizeof(char)*4);
         sscanf(linebuf, "cache size : %u %s", &cpu->cache, cpu->cache_units);
         sscanf(linebuf, "physical id : %u", &cpu->phy_id);
         sscanf(linebuf, "siblings : %u", &cpu->siblings);
         sscanf(linebuf, "core id : %u", &cpu->core_id);
         sscanf(linebuf, "cpu cores : %u", &cpu->cpu_cores);
         sscanf(linebuf, "bogomips : %f", &cpu->bogomips);
-        sscanf(linebuf, "cpu MHz : %f", &cpu->clock);
 
     }
     fclose(fh);
@@ -149,7 +149,7 @@ void dump_cpudata(sysinf_t *host_data)
         printf("  vendor:     %s\n", cpus->vendor_id);
         printf("  model:      %s\n", cpus->model);
         printf("  bogomips:   %f\n", cpus->bogomips);
-        printf("  clock:      %f\n", cpus->clock);
+        printf("  clock:      %f\n", cpus->cpuMhz);
         printf("  user:       %lu\n", cpus->user);
         printf("  nice:       %lu\n", cpus->nice);
         printf("  system:     %lu\n", cpus->system);
@@ -195,8 +195,8 @@ inline void poll_cpus(sysinf_t *host_data)
     fclose(fh);
 
     tok = procbuffer;
-    while( (tok = strstr(tok, "cpu MHz        :")) != NULL) {
-        sscanf(tok, "cpu MHz : %f", &cpus->clock);
+    while( (tok = strstr(tok, "cpu MHz")) != NULL) {
+        sscanf(tok, "cpu MHz : %f", &cpus->cpuMhz);
         tok += 11; // Move passed the found substring
         if(cpus->next == NULL) break;
         cpus = cpus->next;
@@ -210,7 +210,6 @@ inline void poll_cpus(sysinf_t *host_data)
     cpus = first;
 
     fgets(readbuf, LINE_BUFFER_SZ, fh);
-#ifdef KERNEL_VER_3
 
     sscanf(readbuf, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
         &host_data->cpu_user,
@@ -224,22 +223,8 @@ inline void poll_cpus(sysinf_t *host_data)
         &host_data->cpu_guest,
         &host_data->cpu_guest_nice);
 
-#elif KERNEL_VER_2
-
-    sscanf(readbuf, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-        &host_data->cpu_user,
-        &host_data->cpu_nice,
-        &host_data->cpu_system,
-        &host_data->cpu_idle,
-        &host_data->cpu_iowait,
-        &host_data->cpu_irq,
-        &host_data->cpu_sirq,
-        &host_data->cpu_steal,
-        &host_data->cpu_guest);
-#endif
     while(fgets(readbuf, LINE_BUFFER_SZ, fh) != NULL) {
 
-#ifdef KERNEL_VER_3
         sscanf(readbuf, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
             &cpus->user,
             &cpus->nice,
@@ -251,20 +236,6 @@ inline void poll_cpus(sysinf_t *host_data)
             &cpus->steal,
             &cpus->guest,
             &cpus->guest_nice);
-
-#elif KERNEL_VER_2
-
-        sscanf(readbuf, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-            &cpus->user,
-            &cpus->nice,
-            &cpus->system,
-            &cpus->idle,
-            &cpus->iowait,
-            &cpus->irq,
-            &cpus->softirq,
-            &cpus->steal,
-            &cpus->guest);
-#endif
 
         cpus = cpus->next;
         if (cpus == NULL ) break;

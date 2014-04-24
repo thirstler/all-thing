@@ -16,7 +16,7 @@ fsinf_t* del_fs(fsinf_t* fs, char* mountpoint)
     while( fs != NULL) {
 
         if( strcmp(mountpoint, fs->mountpoint) == 0 ) {
-            if(fs->device != NULL) free(fs->device);
+            if(fs->dev != NULL) free(fs->dev);
             if(fs->mountpoint != NULL) free(fs->mountpoint);
             if(fs->fstype != NULL) free(fs->fstype);
 
@@ -36,7 +36,7 @@ void dump_fs(fsinf_t* fs)
     printf("FS Info:\n");
     while(fs != NULL) {
         printf("  Mountpoint %s\n", fs->mountpoint);
-        printf("   Device     : %s\n", fs->device);
+        printf("   Device     : %s\n", fs->dev);
         printf("   FS Type    : %s\n", fs->fstype);
         printf("   Blocks     : %lu\n", fs->blks_total);
         printf("   Blks free  : %lu\n", fs->blks_free);
@@ -78,7 +78,7 @@ fsinf_t* push_fs(fsinf_t* fs, char *mountpoint, char *device)
         first = fs;
     } else {
         while( fs->next != NULL) {
-            if( strcmp(device, fs->device) == 0 ) return first;
+            if( strcmp(device, fs->dev) == 0 ) return first;
             fs = fs->next;
         }
         fs->next = malloc(sizeof(fsinf_t));
@@ -88,7 +88,7 @@ fsinf_t* push_fs(fsinf_t* fs, char *mountpoint, char *device)
 
     if ( statfs(mountpoint, &sb) == 0 ) {
         fs->mountpoint = strdup(mountpoint);
-        fs->device = strdup(device);
+        fs->dev = strdup(device);
         fs->next = NULL;
     }
 

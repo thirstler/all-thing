@@ -7,35 +7,53 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <search.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "at.h"
 
 extern char on;
 extern master_config_t *cfg;
 
-static int destroy_assmbl_buf(
-        unsigned int id,
-        json_str_assembly_bfr_t **ab)
+#ifdef DDEBUG
+static size_t get_ab_lll(json_str_assembly_bfr_t *ll)
 {
-    json_str_assembly_bfr_t *ref = *ab;
-    json_str_assembly_bfr_t *prev = NULL;
+	size_t count=0;
+	while(ll != NULL) {
+		ll = ll->next;
+		count += 1;
+	}
+	return count;
+}
+#endif
 
-    while(ref != NULL) {
-        if(ref->id == id) {
+static json_str_assembly_bfr_t* destroy_assmbl_buf(
+        uint64_t id,
+        json_str_assembly_bfr_t *ab)
+{
+    json_str_assembly_bfr_t *prev = NULL;
+    json_str_assembly_bfr_t *ph = ab; /* hold the start of the list */
+
+    while(ab != NULL) {
+        if(ab->id == id) {
             if(prev == NULL) {
                 /* first item! (could be only) */
-                *ab = ref->next;
+            	ph = ab->next;
             } else {
                 /* everywhere else (could be last) */
-                prev->next = ref->next;
+                prev->next = ab->next;
             }
-            free(ref->json_str);
-            free(ref);
-            return EXIT_SUCCESS;
+            free(ab->json_str);
+            free(ab);
+            asmblerr = ASMBL_BUFFER_SUCCESS;
+            return ph;
         }
-        prev = ref;
-        ref = ref->next;
+        prev = ab;
+        ab = ab->next;
     }
-    return EXIT_FAILURE;
+    /* Not found */
+    asmblerr = ASMBL_BUFFER_NOT_FOUND;
+    return ph;
 }
 
 static json_str_assembly_bfr_t* mk_new_assmbl_buf(
@@ -89,24 +107,27 @@ static json_str_assembly_bfr_t* new_assmbl_buf(
 }
 
 /**
- * Get an assembly buffer for a node ID, returns NULL when unable to find
+ * Get an assembly buffer for a node ID, returns NULL when unable to find and
+ * sets assmblerr appropriately.
  */
 static inline json_str_assembly_bfr_t* get_assmbl_buf(
         const rprt_hdr_t *hdr,
-        json_str_assembly_bfr_t **buffer_list)
+        json_str_assembly_bfr_t *bfrptr)
 {
-    json_str_assembly_bfr_t *bfrptr = *buffer_list;
     while(bfrptr != NULL) {
         if(hdr->hostid == bfrptr->id) {
-            if(hdr->msgid == bfrptr->msgid) return bfrptr;
-            else {
+            if(hdr->msgid == bfrptr->msgid) {
+            	asmblerr = ASMBL_BUFFER_FOUND;
+            	return bfrptr;
+            } else {
                 /* Message mix-up! */
-                destroy_assmbl_buf(hdr->hostid, buffer_list);
+                asmblerr = ASMBL_BUFFER_BAD_MSG;
                 return NULL;
             }
         }
         bfrptr = bfrptr->next;
     }
+    asmblerr = ASMBL_BUFFER_NOT_FOUND;
     return NULL;
 }
 
@@ -115,7 +136,6 @@ static int pkt_assembly(
         char *msg_str,
         json_str_assembly_bfr_t *assembly_buffer)
 {
-
     char *ptr = assembly_buffer->json_str + hdr->offset;
     strcpy(ptr, msg_str);
     assembly_buffer->charcount += strlen(msg_str);
@@ -129,13 +149,24 @@ static int pkt_assembly(
 
 static void apply_assmb_buf(
         json_str_assembly_bfr_t *assembly_buffer,
-        sysinf_t **system_data)
+        master_global_data_t *data_master)
 {
-    sysinf_t *newobj = dataobj_from_jsonstr(
-            assembly_buffer->id,
-            assembly_buffer->json_str);
+	sysinf_t *system_data = NULL;
+    json_error_t error;
+    json_t *root = json_loads(assembly_buffer->json_str, 0, &error);
 
+	sysinf_t *new_data = dataobj_from_json(assembly_buffer->id, root, NULL);
 
+	system_data = get_data_obj(assembly_buffer->id, data_master);
+
+	if(system_data == NULL) {
+		if(add_new_data_obj(data_master, new_data) == EXIT_FAILURE)
+			free_data_obj(new_data);
+	} else {
+		calc_counters(new_data, system_data);
+		dataobj_from_json(assembly_buffer->id, root, system_data);
+		free_data_obj(new_data);
+	}
 }
 
 static void prune_assmbl_buf(json_str_assembly_bfr_t **assembly_buffer)
@@ -149,7 +180,7 @@ static void prune_assmbl_buf(json_str_assembly_bfr_t **assembly_buffer)
         timersub(&nownow, &abptr->ts, &age);
         if(age.tv_sec > MASTER_ASMBL_BUF_AGE) {
             abptr = abptr->next;
-            destroy_assmbl_buf(abptr->id, assembly_buffer);
+            *assembly_buffer = destroy_assmbl_buf(abptr->id, *assembly_buffer);
             continue;
         }
         abptr = abptr->next;
@@ -160,13 +191,18 @@ void *report_listener(void *dptr)
 {
     int rc;
     master_global_data_t *data_master = dptr;
-    json_str_assembly_bfr_t *assembly_buffer = NULL; // start of linked-list
+
+    /* Message assembly buffer */
+    json_str_assembly_bfr_t *asmbl_bfr_list = NULL;  // start of linked-list
     json_str_assembly_bfr_t *this_asmbl_buf;         // working buffer
+
+    /* Network listening */
     struct addrinfo hints;
     struct addrinfo *servinfo;
     struct sockaddr fromaddr;
     socklen_t fromsz = sizeof(struct sockaddr);
     int lsock;
+
     uint64_t pktc;
     char recv_buffer[UDP_SEND_SZ+1];
     char strbuf[255];
@@ -200,7 +236,14 @@ void *report_listener(void *dptr)
 
     freeaddrinfo(servinfo);
 
-    for(pktc=0; on; pktc +=1) {
+    /* Forget that dynamic shit, just allocate the array */
+    data_master->system_data = malloc(sizeof(sysinf_t*) * DATA_STRUCT_AR_SIZE);
+    memset(data_master->system_data, '\0',
+    		sizeof(sysinf_t*)*DATA_STRUCT_AR_SIZE);
+    data_master->system_data_sz = 0;
+
+    pktc=0;
+    while(on) {
 
         memset(recv_buffer, '\0', UDP_SEND_SZ+1);
         rc = recvfrom(lsock,
@@ -208,35 +251,56 @@ void *report_listener(void *dptr)
                 UDP_SEND_SZ, 0,
                 &fromaddr, &fromsz);
 
-        if(sscanf(recv_buffer,"%x %lx %lx %lx %lx",
+        /* Read packet header */
+        if(sscanf(recv_buffer,"%lx %lx %lx %lx %lx",
                 &pkt_hdr.hostid, &pkt_hdr.seq,
                 &pkt_hdr.msg_sz, &pkt_hdr.offset, &pkt_hdr.msgid) == 5)
         {
-            this_asmbl_buf = get_assmbl_buf(&pkt_hdr, &assembly_buffer);
-            if(this_asmbl_buf == NULL)
-                this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &assembly_buffer);
-            if(this_asmbl_buf == NULL) continue;
+            this_asmbl_buf = get_assmbl_buf(&pkt_hdr, asmbl_bfr_list);
+            if(asmblerr != ASMBL_BUFFER_FOUND) {
 
+            	/* host ID not found in buffer, must need a new one */
+            	if(asmblerr == ASMBL_BUFFER_NOT_FOUND) {
+            		this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &asmbl_bfr_list);
+
+            	/* out-of-order message ID, dump current buffer and start a
+            	 * new one */
+            	} else if(asmblerr == ASMBL_BUFFER_BAD_MSG) {
+            		asmbl_bfr_list = destroy_assmbl_buf(
+            								pkt_hdr.hostid, asmbl_bfr_list);
+            		this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &asmbl_bfr_list);
+            	}
+            }
+
+            /* Packet assembly for this host message is done, update the
+             * appropriate data structure */
             if(pkt_assembly(&pkt_hdr,
                     (strstr(recv_buffer, "\n")+1),
                     this_asmbl_buf) == ASMBL_BUFFER_COMPLETE) {
-                apply_assmb_buf(this_asmbl_buf, data_master->system_data);
-                destroy_assmbl_buf(pkt_hdr.hostid, &assembly_buffer);
+
+            	/* apply buffered message to data struct */
+                apply_assmb_buf(this_asmbl_buf, data_master);
+
+                /* clean up assembly buffer for this message */
+                asmbl_bfr_list = destroy_assmbl_buf(
+                						pkt_hdr.hostid, asmbl_bfr_list);
+
             }
             if( (pktc % ASMBL_BUF_PRUNE_COUNT) == 0)
-                prune_assmbl_buf(&assembly_buffer);
+                prune_assmbl_buf(&asmbl_bfr_list);
 
         } else if(sscanf(recv_buffer, "<<%s exited>>", strbuf) == 1) {
-            printf("host ID %s has stopped its agent\n", strbuf);
-            continue;
+            syslog(LOG_INFO, "host ID %s has stopped its agent\n", strbuf);
         }  else {
-            printf("bad packet?\n");
+        	syslog(LOG_DEBUG, "foreign packet dropped");
         }
-
+        pktc +=1;
     }
 
-    while(assembly_buffer != NULL)
-        destroy_assmbl_buf(assembly_buffer->id, &assembly_buffer);
+    while(asmbl_bfr_list != NULL)
+    	asmbl_bfr_list = destroy_assmbl_buf(
+    									asmbl_bfr_list->id, asmbl_bfr_list);
+
 
     return NULL;
 }
