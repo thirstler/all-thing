@@ -155,18 +155,15 @@ static void apply_assmb_buf(
     json_error_t error;
     json_t *root = json_loads(assembly_buffer->json_str, 0, &error);
 
-	sysinf_t *new_data = dataobj_from_json(assembly_buffer->id, root, NULL);
+    if(root == NULL) {
+    	syslog(LOG_WARNING,
+    			"failed to parse JSON string from node id %lx, message id %lx",
+    			assembly_buffer->id, assembly_buffer->msgid);
+    	return;
+    }
+    system_data = dataobj_from_json(root);
 
-	system_data = get_data_obj(assembly_buffer->id, data_master);
-
-	if(system_data == NULL) {
-		if(add_new_data_obj(data_master, new_data) == EXIT_FAILURE)
-			free_data_obj(new_data);
-	} else {
-		calc_counters(new_data, system_data);
-		dataobj_from_json(assembly_buffer->id, root, system_data);
-		free_data_obj(new_data);
-	}
+	json_decref(root);
 }
 
 static void prune_assmbl_buf(json_str_assembly_bfr_t **assembly_buffer)
@@ -272,7 +269,7 @@ void *report_listener(void *dptr)
             	}
             }
 
-            /* Packet assembly for this host message is done, update the
+            /* If packet assembly for this host message is done, update the
              * appropriate data structure */
             if(pkt_assembly(&pkt_hdr,
                     (strstr(recv_buffer, "\n")+1),
@@ -284,8 +281,8 @@ void *report_listener(void *dptr)
                 /* clean up assembly buffer for this message */
                 asmbl_bfr_list = destroy_assmbl_buf(
                 						pkt_hdr.hostid, asmbl_bfr_list);
-
             }
+
             if( (pktc % ASMBL_BUF_PRUNE_COUNT) == 0)
                 prune_assmbl_buf(&asmbl_bfr_list);
 

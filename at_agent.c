@@ -273,22 +273,22 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
             tmpobj = json_pack("{sssIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsI}",
                     "dev", ifaceptr->dev,
-                    "rx_packets", ifaceptr->recv_packets,
-                    "rx_bytes", ifaceptr->recv_bytes,
-                    "rx_errs", ifaceptr->recv_errs,
-                    "rx_drop", ifaceptr->recv_drop,
-                    "rx_fifo", ifaceptr->recv_fifo,
-                    "rx_frame", ifaceptr->recv_frame,
-                    "rx_comp", ifaceptr->recv_compressed,
-                    "rx_multi", ifaceptr->recv_multicasts,
-                    "tx_packets", ifaceptr->trns_packets,
-                    "tx_bytes", ifaceptr->trns_bytes,
-                    "tx_errs", ifaceptr->trns_errs,
-                    "tx_drop", ifaceptr->trns_drop,
-                    "tx_fifo", ifaceptr->trns_fifo,
-                    "tx_colls", ifaceptr->trns_colls,
-                    "tx_carr", ifaceptr->trns_carrier,
-                    "tx_comp", ifaceptr->trns_compressed);
+                    "rx_packets", ifaceptr->rx_packets,
+                    "rx_bytes", ifaceptr->rx_bytes,
+                    "rx_errs", ifaceptr->rx_errs,
+                    "rx_drop", ifaceptr->rx_drop,
+                    "rx_fifo", ifaceptr->rx_fifo,
+                    "rx_frame", ifaceptr->rx_frame,
+                    "rx_comp", ifaceptr->rx_comp,
+                    "rx_multi", ifaceptr->rx_multi,
+                    "tx_packets", ifaceptr->tx_packets,
+                    "tx_bytes", ifaceptr->tx_bytes,
+                    "tx_errs", ifaceptr->tx_errs,
+                    "tx_drop", ifaceptr->tx_drop,
+                    "tx_fifo", ifaceptr->tx_fifo,
+                    "tx_colls", ifaceptr->tx_colls,
+                    "tx_carr", ifaceptr->tx_carr,
+                    "tx_comp", ifaceptr->tx_comp);
 
             json_array_append_new(tmpar, tmpobj);
 

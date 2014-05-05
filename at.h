@@ -20,6 +20,7 @@
 #define DEFAULT_IODEV_MULT 1
 #define DEFAULT_FS_MULT 20
 #define DEFAULT_RUNUSER "root"
+#define DEFAULT_REPORT_PORT "3456"
 
 #define DEFAULT_MASTER_MON_RATE 5000000
 #define AGENT_PROFILE_DIR "/var/db/allthing"
@@ -183,22 +184,22 @@ typedef struct iface_inf_s {
     char *dev;
     char macaddr[18];
     char ipv4_addr[16];
-    uint64_t recv_bytes;
-    uint64_t recv_packets;
-    uint64_t recv_errs;
-    uint64_t recv_drop;
-    uint64_t recv_fifo;
-    uint64_t recv_frame;
-    uint64_t recv_compressed;
-    uint64_t recv_multicasts;
-    uint64_t trns_bytes;
-    uint64_t trns_packets;
-    uint64_t trns_errs;
-    uint64_t trns_drop;
-    uint64_t trns_fifo;
-    uint64_t trns_colls;
-    uint64_t trns_carrier;
-    uint64_t trns_compressed;
+    uint64_t rx_bytes;
+    uint64_t rx_packets;
+    uint64_t rx_errs;
+    uint64_t rx_drop;
+    uint64_t rx_fifo;
+    uint64_t rx_frame;
+    uint64_t rx_comp;
+    uint64_t rx_multi;
+    uint64_t tx_bytes;
+    uint64_t tx_packets;
+    uint64_t tx_errs;
+    uint64_t tx_drop;
+    uint64_t tx_fifo;
+    uint64_t tx_colls;
+    uint64_t tx_carr;
+    uint64_t tx_comp;
     void *prev;
     void *next;
 
@@ -468,7 +469,7 @@ void *report_listener(void *dptr);
  * NULL, otherwise apply data to "target" (add still return the affected
  * object.
  */
-sysinf_t* dataobj_from_json(uint64_t id, json_t *root, sysinf_t *target);
+sysinf_t* dataobj_from_json(json_t *root);
 
 /**
  * Fetch data object with ID "id" from the master system data object
@@ -496,4 +497,9 @@ inline void free_data_obj(sysinf_t *dobj);
  */
 int calc_counters(sysinf_t *from, sysinf_t *to);
 
+/**
+ * Take new object, run counters for data rates then update data in standing
+ * (old) object with new data.
+ */
+int update_and_merge(sysinf_t *newobj, sysinf_t *oldobj);
 

@@ -30,12 +30,13 @@ static int config_handler(
     if(strcmp(section, "global") == 0) {
         if(strcmp(name, "master_target_port") == 0)
             cfg->listen_port = strdup(value);
-    }
-    if(strcmp(section, "master") == 0) {
-        if(strcmp(name, "mon_rate") == 0)
-            cfg->mon_rate = atoi(value);
         if(strcmp(name, "listen_port") == 0)
             cfg->listen_port = strdup(value);
+    }
+
+    if(strcmp(section, "master") == 0) {
+        if(strcmp(name, "mon_loop_rate") == 0)
+            cfg->mon_rate = atoi(value);
         if(strcmp(name, "runuser") == 0)
             cfg->runuser = strdup(value);
         if(strcmp("name", "max_report_handlers") == 0)
@@ -53,8 +54,17 @@ static void set_cfg_defaults(master_config_t* cfg)
     cfg->mon_rate = DEFAULT_MASTER_MON_RATE;
     cfg->runuser = strdup(DEFAULT_RUNUSER);
     cfg->config_file = strdup(DEFAULT_CONFIG);
+    cfg->listen_port = strdup(DEFAULT_REPORT_PORT);
     cfg->daemon = 1;
     cfg->log_level = 4;
+}
+
+static void free_cfg(master_config_t* cfg)
+{
+	if(cfg->runuser != NULL) free(cfg->runuser);
+	if(cfg->listen_port != NULL) free(cfg->listen_port);
+	if(cfg->config_file != NULL) free(cfg->config_file);
+	free(cfg);
 }
 
 static void quitit(int signal)
@@ -70,12 +80,13 @@ static void reinit(int signal)
 
 static void clear_data_master(master_global_data_t *data_master)
 {
-	size_t i;
+	size_t i = 0;
 
+	if(data_master == NULL) return;
 	for(i = 0; i < data_master->system_data_sz; i += 1) {
 		free_data_obj(data_master->system_data[i]);
 	}
-	free(data_master->system_data);
+	if(data_master->system_data != NULL) free(data_master->system_data);
 	free(data_master);
 }
 
@@ -186,6 +197,7 @@ int main(int argc, char *argv[])
 
     data_master = malloc(sizeof(master_global_data_t));
     data_master->system_data = NULL;
+    data_master->system_data_sz = 0;
 
     /* Spin-off node listener thread */
     rc = pthread_create(
@@ -200,6 +212,7 @@ int main(int argc, char *argv[])
     pthread_join(node_listen, NULL);
 
     clear_data_master(data_master);
+    free_cfg(cfg);
 
     return EXIT_SUCCESS;
 }

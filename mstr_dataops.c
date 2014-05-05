@@ -146,7 +146,7 @@ static inline iodev_inf_t* get_iodev(char *devname, iodev_inf_t *iodev_start)
 	return NULL;
 }
 
-static inline iodev_inf_t* add_iodev(char *devname, sysinf_t *sysinf)
+static inline iodev_inf_t* add_iodev(const char *devname, sysinf_t *sysinf)
 {
 	iodev_inf_t *iodev = sysinf->iodev;
 
@@ -192,7 +192,7 @@ static inline fsinf_t* get_fsdev(char *devname, fsinf_t *fsdev_start)
 	return NULL;
 }
 
-static inline fsinf_t* add_fsdev(char *devname, sysinf_t *sysinf)
+static inline fsinf_t* add_fsdev(const char *devname, sysinf_t *sysinf)
 {
 	fsinf_t *fsdev = sysinf->fsinf;
 
@@ -240,7 +240,7 @@ static inline iface_inf_t* get_iface(char *ifacedev, iface_inf_t *iface_start)
     return NULL;
 }
 
-static inline iface_inf_t* add_iface(char *devname, sysinf_t *sysinf)
+static inline iface_inf_t* add_iface(const char *devname, sysinf_t *sysinf)
 {
 	iface_inf_t *iface = sysinf->iface;
 
@@ -288,7 +288,7 @@ static inline cpu_inf_t* get_cpu(u_int cpuid, sysinf_t *sysinf)
     return NULL;
 }
 
-static inline cpu_inf_t* add_cpu(size_t cpuid, sysinf_t *sysinf)
+static inline cpu_inf_t* add_cpu(u_int cpuid, sysinf_t *sysinf)
 {
     
 	cpu_inf_t *cpus = sysinf->cpu;
@@ -304,6 +304,10 @@ static inline cpu_inf_t* add_cpu(size_t cpuid, sysinf_t *sysinf)
 	cpu_inf_t *workwithme = malloc(sizeof(cpu_inf_t));
 	memset(workwithme, '\0', sizeof(cpu_inf_t));
 	workwithme->cpu = cpuid;
+
+	/* Make the struct for data rate values */
+	workwithme->calc = malloc(sizeof(cpu_inf_calc_t));
+	memset(workwithme->calc, '\0', sizeof(cpu_inf_calc_t));
 
 	/* ffwd to the end */
 	while(cpus->next != NULL) cpus = cpus->next;
@@ -379,7 +383,6 @@ inline void free_data_obj(sysinf_t *dobj)
 
 #define SET_J_STRING(root, index, dest) {\
     if( (tmpobj = json_object_get(root, index)) != NULL) {\
-        if(dest != NULL) free(dest);\
         dest = strdup(json_string_value(tmpobj));\
     }\
 }
@@ -474,197 +477,203 @@ inline static void cpudyn_from_json(const json_t* root, sysinf_t* target)
 	json_decref(jcpus);
 }
 
-sysinf_t* dataobj_from_json(uint64_t id, json_t* root, sysinf_t* target)
+#define J_GET_S(jobj, key) {\
+	return strdup(json_string_value(json_object_get(jobj, key));\
+}
+
+#define J_GET_I(jobj, key) {\
+	return json_integer_value(json_object_get(jobj, key));\
+}
+
+#define J_GET_R(jobj, key) {\
+	return json_real_value(json_object_get(jobj, key));\
+}
+
+
+inline static cpu_inf_t* mkget_cpu(u_int cpu, sysinf_t *sysinf)
 {
+	cpu_inf_t *cpuobj = sysinf->cpu;
+	while(cpuobj != NULL) {
+		if ( cpuobj->cpu == cpu ) return cpuobj;
+		cpuobj = cpuobj->next;
+	}
 
-    json_t *tmproot, *tmpobj, *tmparr;
-    iface_inf_t *iface;
-    iodev_inf_t *iodev;
-    fsinf_t *fsdev;
-    size_t i;
-    char *strbuf;
-    if(target == NULL) target = new_data_obj(id);
+	/* couldn't find it - NEW ONE!!!! */
+	return add_cpu(cpu, sysinf);
+}
 
-    /* If it's not working JSON or our target doen't exit, fail */
-    if(root == NULL || target == NULL) return NULL;
+sysinf_t* dataobj_from_json(json_t* msg)
+{
+	uint64_t id;
+	size_t indx, cpu;
+	sysinf_t *newobj = NULL;
+	const char *strbuf = json_string_value(json_object_get(msg, "hostid"));
+	json_t *obj, *arr;
+	fsinf_t *fsinf;
+	iodev_inf_t *iodevinf;
+	iface_inf_t *ifaceinf;
+	cpu_inf_t *cpuinf;
 
-    /* These guys float right off of the root object */
-    SET_J_STRING(root, "hostname", target->hostname);
-    SET_J_REAL(root, "uptime", &target->uptime);
-    SET_J_REAL(root, "idletime", &target->idletime);
+	if(strbuf == NULL) return NULL;
 
-    /* Grab the time-stamp */
-    if( (tmproot = json_object_get(root, "ts")) != NULL) {
-        SET_J_INTEGER(tmproot, "tv_sec", &target->sample_tv.tv_sec);
-        SET_J_INTEGER(tmproot, "tv_usec", &target->sample_tv.tv_usec);
-        json_decref(tmproot);
-    }
+	sscanf(strbuf, "%lx", &id);
 
-    /* Memory info */
-    if( (tmproot = json_object_get(root, "memory")) != NULL) {
-        SET_J_INTEGER(tmproot, "cache", &target->mem_cache);
-        SET_J_INTEGER(tmproot, "free", &target->mem_free);
-        SET_J_INTEGER(tmproot, "total", &target->mem_total);
-        SET_J_INTEGER(tmproot, "buffers", &target->mem_buffers);
-        SET_J_INTEGER(tmproot, "swap_total", &target->swap_total);
-        SET_J_INTEGER(tmproot, "swap_free", &target->swap_free);
-        json_decref(tmproot);
-    }
+	newobj = new_data_obj(id);
 
-    /* Load info */
-    if( (tmproot = json_object_get(root, "sysload")) != NULL) {
-        SET_J_REAL(tmproot, "1min", &target->load_1);
-        SET_J_REAL(tmproot, "5min", &target->load_5);
-        SET_J_REAL(tmproot, "15min", &target->load_15);
-        SET_J_INTEGER(tmproot, "procs_run", &target->procs_running);
-        SET_J_INTEGER(tmproot, "procs_total", &target->procs_total);
-        json_decref(tmproot);
-    }
-
-    /* CPU totals and system totals */
-    if( (tmproot = json_object_get(root, "cpu_ttls")) != NULL) {
-        SET_J_INTEGER(tmproot, "user", &target->cpu_user);
-        SET_J_INTEGER(tmproot, "system", &target->cpu_system);
-        SET_J_INTEGER(tmproot, "nice", &target->cpu_nice);
-        SET_J_INTEGER(tmproot, "iowait", &target->cpu_iowait);
-        SET_J_INTEGER(tmproot, "idle", &target->cpu_idle);
-        SET_J_INTEGER(tmproot, "steal", &target->cpu_steal);
-        SET_J_INTEGER(tmproot, "guest", &target->cpu_guest);
-        SET_J_INTEGER(tmproot, "n_guest", &target->cpu_guest_nice);
-        SET_J_INTEGER(tmproot, "irq", &target->cpu_irq);
-        SET_J_INTEGER(tmproot, "s_irq", &target->cpu_sirq);
-        SET_J_INTEGER(tmproot, "ctxt", &target->context_switches);
-        SET_J_INTEGER(tmproot, "intrps", &target->interrupts);
-        SET_J_INTEGER(tmproot, "s_intrps", &target->s_interrupts);
-        json_decref(tmproot);
-    }
-    
-    /* Static CPU info */
-    cpustatic_from_json(root, target);
-    
-    /* Dynamic CPU info */
-    cpudyn_from_json(root, target);
-    
-    /* Network Interfaces */
-    
-    tmparr = json_object_get(root, "iface");
-    for(i=0; i < json_array_size(tmparr); i+=1) {
-        
-        tmproot = json_array_get(tmparr, i);
-
-        /* snatch the CPU ID we need to update */
-        if((tmpobj = json_object_get(tmproot, "dev")) == NULL) {
-			json_decref(tmproot);
-			continue;
+	/* File system stats */
+	arr = json_object_get(msg, "fs");
+	if( json_is_array(arr) ) {
+		json_array_foreach(arr, indx, obj) {
+			strbuf = json_string_value(json_object_get(obj, "dev"));
+			if ( (fsinf = add_fsdev(strbuf, newobj)) != NULL ) {
+				fsinf->mountpoint = strdup(json_string_value(json_object_get(obj, "mountpoint")));
+				fsinf->fstype = strdup(json_string_value(json_object_get(obj, "fstype")));
+				fsinf->blks_total = json_integer_value(json_object_get(obj, "blks_total"));
+				fsinf->blks_free = json_integer_value(json_object_get(obj, "blks_free"));
+				fsinf->blks_avail = json_integer_value(json_object_get(obj, "blks_avail"));
+				fsinf->block_size = json_integer_value(json_object_get(obj, "block_size"));
+				fsinf->inodes_ttl = json_integer_value(json_object_get(obj, "inodes_ttl"));
+				fsinf->inodes_free = json_integer_value(json_object_get(obj, "inodes_free"));
+			}
 		}
-        strbuf = strdup(json_string_value(tmpobj));
-        json_decref(tmpobj);
-        
-        /* get (or add) the iface we're going to update */
-        if((iface = get_iface(strbuf, target->iface)) == NULL)
-            iface = add_iface(strbuf, target);
-        free(strbuf);
-        
-        SET_J_STRING(tmproot, "dev", iface->dev);
-        SET_J_INTEGER(tmproot, "rx_packets", &iface->recv_packets);
-        SET_J_INTEGER(tmproot, "rx_bytes", &iface->recv_bytes);
-        SET_J_INTEGER(tmproot, "rx_errs", &iface->recv_errs);
-        SET_J_INTEGER(tmproot, "rx_drop", &iface->recv_drop);
-        SET_J_INTEGER(tmproot, "rx_fifo", &iface->recv_fifo);
-        SET_J_INTEGER(tmproot, "rx_frame", &iface->recv_frame);
-        SET_J_INTEGER(tmproot, "rx_comp", &iface->recv_compressed);
-        SET_J_INTEGER(tmproot, "rx_multi", &iface->recv_multicasts);
-        SET_J_INTEGER(tmproot, "tx_packets", &iface->trns_packets);
-        SET_J_INTEGER(tmproot, "tx_bytes", &iface->trns_bytes);
-        SET_J_INTEGER(tmproot, "tx_errs", &iface->trns_errs);
-        SET_J_INTEGER(tmproot, "tx_drop", &iface->trns_drop);
-        SET_J_INTEGER(tmproot, "tx_fifo", &iface->trns_fifo);
-        SET_J_INTEGER(tmproot, "tx_colls", &iface->trns_colls);
-        SET_J_INTEGER(tmproot, "tx_carr", &iface->trns_carrier);
-        SET_J_INTEGER(tmproot, "tx_comp", &iface->trns_compressed);
-        
-        json_decref(tmproot);
-    }
-    json_decref(tmparr);
-   
-    /* I/O devices */
+	}
 
-    tmparr = json_object_get(root, "iodev");
-    for(i=0; i < json_array_size(tmparr); i+=1) {
-
-		tmproot = json_array_get(tmparr, i);
-
-    	/* snatch the device ID we need to update */
-		if((tmpobj = json_object_get(tmproot, "dev")) == NULL) {
-			json_decref(tmproot);
-			continue;
+	/* Network interface stats */
+	arr = json_object_get(msg, "iface");
+	if( json_is_array(arr) ) {
+		json_array_foreach(arr, indx, obj) {
+			strbuf = json_string_value(json_object_get(obj, "dev"));
+			if ( (ifaceinf = add_iface(strbuf, newobj)) != NULL ) {
+				ifaceinf->rx_packets = json_integer_value(json_object_get(obj, "rx_packets"));
+				ifaceinf->rx_bytes = json_integer_value(json_object_get(obj, "rx_bytes"));
+				ifaceinf->rx_errs = json_integer_value(json_object_get(obj, "rx_errs"));
+				ifaceinf->rx_drop = json_integer_value(json_object_get(obj, "rx_drop"));
+				ifaceinf->rx_fifo = json_integer_value(json_object_get(obj, "rx_fifo"));
+				ifaceinf->rx_frame = json_integer_value(json_object_get(obj, "rx_frame"));
+				ifaceinf->rx_comp = json_integer_value(json_object_get(obj, "rx_comp"));
+				ifaceinf->rx_multi = json_integer_value(json_object_get(obj, "rx_multi"));
+				ifaceinf->tx_packets = json_integer_value(json_object_get(obj, "tx_packets"));
+				ifaceinf->tx_bytes = json_integer_value(json_object_get(obj, "tx_bytes"));
+				ifaceinf->tx_errs = json_integer_value(json_object_get(obj, "tx_errs"));
+				ifaceinf->tx_drop = json_integer_value(json_object_get(obj, "tx_drop"));
+				ifaceinf->tx_fifo = json_integer_value(json_object_get(obj, "tx_fifo"));
+				ifaceinf->tx_colls = json_integer_value(json_object_get(obj, "tx_colls"));
+				ifaceinf->tx_carr = json_integer_value(json_object_get(obj, "tx_carr"));
+				ifaceinf->tx_comp = json_integer_value(json_object_get(obj, "tx_comp"));
+			}
 		}
-		strbuf = strdup(json_string_value(tmpobj));
-		json_decref(tmpobj);
+	}
 
-		/* get (or add) the iface we're going to update */
-		if((iodev = get_iodev(strbuf, target->iodev)) == NULL)
-			iodev = add_iodev(strbuf, target);
-		free(strbuf);
-
-		SET_J_STRING(tmproot, "dev", iodev->dev);
-		SET_J_INTEGER(tmproot, "reads", &iodev->reads);
-		SET_J_INTEGER(tmproot, "read_sectors", &iodev->read_sectors);
-		SET_J_INTEGER(tmproot, "reads_merged", &iodev->reads_merged);
-		SET_J_INTEGER(tmproot, "msec_reading", &iodev->msec_reading);
-		SET_J_INTEGER(tmproot, "writes", &iodev->writes);
-		SET_J_INTEGER(tmproot, "write_sectors", &iodev->write_sectors);
-		SET_J_INTEGER(tmproot, "writes_merged", &iodev->writes_merged);
-		SET_J_INTEGER(tmproot, "msec_writing", &iodev->msec_writing);
-		SET_J_INTEGER(tmproot, "current_ios", &iodev->current_ios);
-		SET_J_INTEGER(tmproot, "msec_ios", &iodev->msec_ios);
-		SET_J_INTEGER(tmproot, "weighted_ios", &iodev->weighted_ios);
-
-		json_decref(tmproot);
-
-    }
-    json_decref(tmparr);
-
-    /* File systems */
-    tmparr = json_object_get(root, "fs");
-    for(i=0; i < json_array_size(tmparr); i+=1) {
-
-		tmproot = json_array_get(tmparr, i);
-
-		/* snatch the device ID we need to update */
-		if((tmpobj = json_object_get(tmproot, "dev")) == NULL) {
-			json_decref(tmproot);
-			continue;
+	/* I/O devices */
+	arr = json_object_get(msg, "iodev");
+	if( json_is_array(arr) ) {
+		json_array_foreach(arr, indx, obj) {
+			strbuf = json_string_value(json_object_get(obj, "dev"));
+			if ( (iodevinf = add_iodev(strbuf, newobj)) != NULL ) {
+				iodevinf->reads = json_integer_value(json_object_get(obj, "reads"));
+				iodevinf->read_sectors = json_integer_value(json_object_get(obj, "read_sectors"));
+				iodevinf->reads_merged = json_integer_value(json_object_get(obj, "reads_merged"));
+				iodevinf->msec_reading = json_integer_value(json_object_get(obj, "msec_reading"));
+				iodevinf->writes = json_integer_value(json_object_get(obj, "writes"));
+				iodevinf->write_sectors = json_integer_value(json_object_get(obj, "write_sectors"));
+				iodevinf->writes_merged = json_integer_value(json_object_get(obj, "writes_merged"));
+				iodevinf->msec_writing = json_integer_value(json_object_get(obj, "msec_writing"));
+				iodevinf->current_ios = json_integer_value(json_object_get(obj, "current_ios"));
+				iodevinf->msec_ios = json_integer_value(json_object_get(obj, "msec_ios"));
+				iodevinf->weighted_ios = json_integer_value(json_object_get(obj, "weighted_ios"));
+			}
 		}
+	}
 
-		strbuf = strdup(json_string_value(tmpobj));
-		json_decref(tmpobj);
+	/* CPUS */
+	arr = json_object_get(msg, "cpus");
+	if ( json_is_array(arr) ) {
+		json_array_foreach(arr, indx, obj) {
+			cpu = json_integer_value(json_object_get(obj, "cpu"));
+			if ( (cpuinf = mkget_cpu(cpu, newobj)) != NULL ) {
+				cpuinf->user = json_integer_value(json_object_get(obj, "user"));
+				cpuinf->nice = json_integer_value(json_object_get(obj, "nice"));
+				cpuinf->system = json_integer_value(json_object_get(obj, "system"));
+				cpuinf->idle = json_integer_value(json_object_get(obj, "idle"));
+				cpuinf->iowait = json_integer_value(json_object_get(obj, "iowait"));
+				cpuinf->irq = json_integer_value(json_object_get(obj, "irq"));
+				cpuinf->softirq = json_integer_value(json_object_get(obj, "s_irq"));
+				cpuinf->steal = json_integer_value(json_object_get(obj, "steal"));
+				cpuinf->guest = json_integer_value(json_object_get(obj, "guest"));
+				cpuinf->guest_nice = json_integer_value(json_object_get(obj, "n_guest"));
+				cpuinf->cpuMhz = json_real_value(json_object_get(obj, "clock"));
+			}
+		}
+	}
 
-		/* get (or add) the iface we're going to update */
-		if((fsdev = get_fsdev(strbuf, target->fsinf)) == NULL)
-			fsdev = add_fsdev(strbuf, target);
-		free(strbuf);
+	arr = json_object_get(msg, "cpus_static");
+	if ( json_is_array(arr) ) {
+		json_array_foreach(arr, indx, obj) {
+			cpu = json_integer_value(json_object_get(obj, "cpu"));
+			if ( (cpuinf = mkget_cpu(cpu, newobj)) != NULL ) {
+				cpuinf->vendor_id = strdup(json_string_value(json_object_get(obj, "vendor_id")));
+				cpuinf->model = strdup(json_string_value(json_object_get(obj, "model")));
+				cpuinf->flags = strdup(json_string_value(json_object_get(obj, "flags")));
+				cpuinf->cache = json_integer_value(json_object_get(obj, "cache"));
+				cpuinf->cache_units = strdup(json_string_value(json_object_get(obj, "cache_units")));
+				cpuinf->phy_id = json_integer_value(json_object_get(obj, "phy_id"));
+				cpuinf->siblings = json_integer_value(json_object_get(obj, "siblings"));
+				cpuinf->core_id = json_integer_value(json_object_get(obj, "core_id"));
+				cpuinf->cpu_cores = json_integer_value(json_object_get(obj, "cpu_cores"));
+				cpuinf->bogomips = json_real_value(json_object_get(obj, "bogomips"));
+			}
+		}
+	}
 
-		SET_J_STRING(tmproot, "dev", fsdev->dev);
-		SET_J_STRING(tmproot, "mountpoint", fsdev->mountpoint);
-		SET_J_STRING(tmproot, "fstype", fsdev->fstype);
-		SET_J_INTEGER(tmproot, "blks_total", &fsdev->blks_total);
-		SET_J_INTEGER(tmproot, "blks_free", &fsdev->blks_free);
-		SET_J_INTEGER(tmproot, "blks_avail", &fsdev->blks_avail);
-		SET_J_INTEGER(tmproot, "block_size", &fsdev->block_size);
-		SET_J_INTEGER(tmproot, "inodes_ttl", &fsdev->inodes_ttl);
-		SET_J_INTEGER(tmproot, "inodes_free", &fsdev->inodes_free);
-
-		json_decref(tmproot);
+	obj = json_object_get(msg, "memory");
+	if(obj != NULL) {
+		newobj->mem_total = json_integer_value(json_object_get(obj, "total"));
+		newobj->mem_free = json_integer_value(json_object_get(obj, "free"));
+		newobj->mem_buffers = json_integer_value(json_object_get(obj, "buffers"));
+		newobj->mem_cache = json_integer_value(json_object_get(obj, "cache"));
+		newobj->swap_total = json_integer_value(json_object_get(obj, "swap_total"));
+		newobj->swap_free = json_integer_value(json_object_get(obj, "swap_free"));
 
 	}
-	json_decref(tmparr);
 
-	json_decref(root);
+	/* Sysload and procs */
+	obj = json_object_get(msg, "sysload");
+	if(obj != NULL) {
+		newobj->load_1 = json_real_value(json_object_get(obj, "1min"));
+		newobj->load_5 = json_real_value(json_object_get(obj, "5min"));
+		newobj->load_15 = json_real_value(json_object_get(obj, "15min"));
+		newobj->procs_running = json_real_value(json_object_get(obj, "procs_run"));
+		newobj->procs_total = json_real_value(json_object_get(obj, "procs_total"));
+	}
 
-#ifdef DEBUG
-	dump_dataobj(target);
-#endif
+	/* Get CPU ttls */
+	obj = json_object_get(msg, "cpu_ttls");
+	if(obj != NULL) {
+		newobj->cpu_user = json_integer_value(json_object_get(obj, "user"));
+		newobj->cpu_nice = json_integer_value(json_object_get(obj, "nice"));
+		newobj->cpu_system = json_integer_value(json_object_get(obj, "system"));
+		newobj->cpu_idle = json_integer_value(json_object_get(obj, "idle"));
+		newobj->cpu_iowait = json_integer_value(json_object_get(obj, "iowait"));
+		newobj->cpu_irq = json_integer_value(json_object_get(obj, "irq"));
+		newobj->cpu_sirq = json_integer_value(json_object_get(obj, "s_irq"));
+		newobj->cpu_steal = json_integer_value(json_object_get(obj, "steal"));
+		newobj->cpu_guest = json_integer_value(json_object_get(obj, "guest"));
+		newobj->cpu_guest_nice = json_integer_value(json_object_get(obj, "n_guest"));
+		newobj->interrupts = json_integer_value(json_object_get(obj, "intrps"));
+		newobj->s_interrupts = json_integer_value(json_object_get(obj, "s_intrps"));
+		newobj->s_interrupts = json_integer_value(json_object_get(obj, "s_intrps"));
+		newobj->context_switches = json_integer_value(json_object_get(obj, "ctxt"));
+	}
 
-    return target;
+	obj = json_object_get(msg, "uptime");
+	if(obj != NULL) newobj->uptime = json_real_value(obj);
+	obj = json_object_get(msg, "idletime");
+	if(obj != NULL) newobj->idletime = json_real_value(obj);
+
+	return newobj;
+}
+
+int update_and_merge(sysinf_t *newobj, sysinf_t *oldobj)
+{
+
 }

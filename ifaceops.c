@@ -95,22 +95,22 @@ void poll_iface(iface_inf_t* iface)
     while(iface != NULL) {
         if( (statptr = strstr(statbuffer, iface->dev)) != NULL) {
             sscanf(statptr, "%*s %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu",
-                    &iface->recv_bytes,
-                    &iface->recv_packets,
-                    &iface->recv_errs,
-                    &iface->recv_drop,
-                    &iface->recv_fifo,
-                    &iface->recv_frame,
-                    &iface->recv_compressed,
-                    &iface->recv_multicasts,
-                    &iface->trns_bytes,
-                    &iface->trns_packets,
-                    &iface->recv_errs,
-                    &iface->trns_drop,
-                    &iface->trns_fifo,
-                    &iface->trns_colls,
-                    &iface->trns_carrier,
-                    &iface->trns_compressed);
+                    &iface->rx_bytes,
+                    &iface->rx_packets,
+                    &iface->rx_errs,
+                    &iface->rx_drop,
+                    &iface->rx_fifo,
+                    &iface->rx_frame,
+                    &iface->rx_comp,
+                    &iface->rx_multi,
+                    &iface->tx_bytes,
+                    &iface->tx_packets,
+                    &iface->rx_errs,
+                    &iface->tx_drop,
+                    &iface->tx_fifo,
+                    &iface->tx_colls,
+                    &iface->tx_carr,
+                    &iface->tx_comp);
             iface = iface->next;
         } else {
             fprintf(stderr, "bad device name!\n");
@@ -124,23 +124,23 @@ void dump_ifacedata(iface_inf_t* iface)
     while(iface != NULL) {
         printf("--\nDev: %s\n", iface->dev);
         printf("  Transmit --\n");
-        printf("    bytes:   %lu\n", iface->trns_bytes);
-        printf("    packets: %lu\n", iface->trns_packets);
-        printf("    errors:  %lu\n", iface->trns_errs);
-        printf("    drop:    %lu\n", iface->trns_drop);
-        printf("    fifo:    %lu\n", iface->trns_fifo);
-        printf("    colls:   %lu\n", iface->trns_colls);
-        printf("    carrier: %lu\n", iface->trns_carrier);
-        printf("    comp:    %lu\n", iface->trns_compressed);
+        printf("    bytes:   %lu\n", iface->tx_bytes);
+        printf("    packets: %lu\n", iface->tx_packets);
+        printf("    errors:  %lu\n", iface->tx_errs);
+        printf("    drop:    %lu\n", iface->tx_drop);
+        printf("    fifo:    %lu\n", iface->tx_fifo);
+        printf("    colls:   %lu\n", iface->tx_colls);
+        printf("    carrier: %lu\n", iface->tx_carr);
+        printf("    comp:    %lu\n", iface->tx_comp);
         printf("  Receive --\n");
-        printf("    bytes:   %lu\n", iface->recv_bytes);
-        printf("    packets: %lu\n", iface->recv_packets);
-        printf("    errors:  %lu\n", iface->recv_errs);
-        printf("    drop:    %lu\n", iface->recv_drop);
-        printf("    fifo:    %lu\n", iface->recv_fifo);
-        printf("    frame:   %lu\n", iface->recv_frame);
-        printf("    comp:    %lu\n", iface->recv_compressed);
-        printf("    multi:   %lu\n", iface->recv_multicasts);
+        printf("    bytes:   %lu\n", iface->rx_bytes);
+        printf("    packets: %lu\n", iface->rx_packets);
+        printf("    errors:  %lu\n", iface->rx_errs);
+        printf("    drop:    %lu\n", iface->rx_drop);
+        printf("    fifo:    %lu\n", iface->rx_fifo);
+        printf("    frame:   %lu\n", iface->rx_frame);
+        printf("    comp:    %lu\n", iface->rx_comp);
+        printf("    multi:   %lu\n", iface->rx_multi);
         iface = iface->next;
     }
 }

@@ -5,7 +5,7 @@ LDFLAGS_T:=$(LDFLAGS) -lpthread
 DESTDIR:=
 VER=0.2
 
-all: at_agent at_master
+all: at_agent at_master 
 
 at_master: mstr_dataops.o mstr_listener.o at_master.o ini.o
 	${CC} ${LDFLAGS_T} mstr_dataops.o mstr_listener.o at_master.o ini.o -o at_master
@@ -40,7 +40,7 @@ ifaceops.o: ifaceops.c at.h
 ini.o: ini.c ini.h
 	${CC} ${CFLAGS} -o ini.o -c ini.c
 
-install: at_agent at_master
+install: at_agent
 
 install-agent: at_agent
 	[ -d /usr/sbin ] || mkdir /usr/sbin
