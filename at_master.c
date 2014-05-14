@@ -56,7 +56,7 @@ static void set_cfg_defaults(master_config_t* cfg)
     cfg->config_file = strdup(DEFAULT_CONFIG);
     cfg->listen_port = strdup(DEFAULT_REPORT_PORT);
     cfg->daemon = 1;
-    cfg->log_level = 4;
+    cfg->log_level = 7;
 }
 
 static void free_cfg(master_config_t* cfg)
@@ -83,10 +83,10 @@ static void clear_data_master(master_global_data_t *data_master)
 	size_t i = 0;
 
 	if(data_master == NULL) return;
-	for(i = 0; i < data_master->system_data_sz; i += 1) {
-		free_data_obj(data_master->system_data[i]);
+	for(i = 0; i < data_master->obj_rec_sz; i += 1) {
+		free_obj_rec(data_master->obj_rec[i]);
 	}
-	if(data_master->system_data != NULL) free(data_master->system_data);
+	if(data_master->obj_rec != NULL) free(data_master->obj_rec);
 	free(data_master);
 }
 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
     }
 
     /* See what the command line has to say.... */
-    while ((rc = getopt (argc, argv, "hDp:r:c:")) != -1) {
+    while ((rc = getopt (argc, argv, "hDp:r:c:d:")) != -1) {
         switch(rc) {
         case 'h':
             printf("%s", AT_MASTER_HELP);
@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
 
     /* forking */
     if(cfg->daemon) {
+    	printf("forking\n");
         rc = fork();
         if(rc != 0) {
             exit(EXIT_SUCCESS);
@@ -168,24 +169,25 @@ int main(int argc, char *argv[])
         fclose(stdout);
         openlog("at_master", LOG_CONS, LOG_USER);
     } else {
+    	printf("not forking\n");
         openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
     }
 
     /* Set the log mask */
     rc = 0;
     switch(cfg->log_level) {
-    case 7: rc |= LOG_DEBUG;
-    case 6: rc |= LOG_INFO;
-    case 5: rc |= LOG_NOTICE;
-    case 4: rc |= LOG_WARNING;
-    case 3: rc |= LOG_ERR;
-    case 2: rc |= LOG_CRIT;
-    case 1: rc |= LOG_ALERT;
-    case 0: rc |= LOG_EMERG;
+    case 7: rc |= LOG_MASK(LOG_DEBUG);
+    case 6: rc |= LOG_MASK(LOG_INFO);
+    case 5: rc |= LOG_MASK(LOG_NOTICE);
+    case 4: rc |= LOG_MASK(LOG_WARNING);
+    case 3: rc |= LOG_MASK(LOG_ERR);
+    case 2: rc |= LOG_MASK(LOG_CRIT);
+    case 1: rc |= LOG_MASK(LOG_ALERT);
+    case 0: rc |= LOG_MASK(LOG_EMERG);
     }
     setlogmask(rc);
 
-    syslog (LOG_INFO, "starting");
+    syslog(LOG_INFO, "starting with log level %d", cfg->log_level);
 
         /* Handle some signals */
     if (signal (SIGINT, quitit) == SIG_IGN)
@@ -196,8 +198,8 @@ int main(int argc, char *argv[])
             signal (SIGHUP, SIG_IGN);
 
     data_master = malloc(sizeof(master_global_data_t));
-    data_master->system_data = NULL;
-    data_master->system_data_sz = 0;
+    data_master->obj_rec = NULL;
+    data_master->obj_rec_sz = 0;
 
     /* Spin-off node listener thread */
     rc = pthread_create(
@@ -205,7 +207,6 @@ int main(int argc, char *argv[])
 
     /* Main (monitor) loop */
     for(mon_count=0; on; mon_count +=1) {
-
         usleep(cfg->mon_rate);
     }
 

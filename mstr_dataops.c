@@ -75,7 +75,7 @@ static void dump_dataobj(sysinf_t *target)
 }
 #endif
 
-inline sysinf_t* new_data_obj(uint64_t newid)
+inline sysinf_t* new_sysinf_obj(uint64_t newid)
 {
     sysinf_t *newobj = malloc(sizeof(sysinf_t));
     memset(newobj, '\0', sizeof(sysinf_t));
@@ -83,57 +83,65 @@ inline sysinf_t* new_data_obj(uint64_t newid)
     return newobj;
 }
 
-inline int rm_data_obj(uint64_t id, master_global_data_t *data)
+inline void free_obj_rec(obj_rec_t *dobj)
+{
+	if(dobj == NULL) return;
+	json_decref(dobj->record);
+	free(dobj);
+}
+
+inline int rm_obj_rec(uint64_t id, master_global_data_t *data)
 {
 	size_t i;
-	int shift=0;
 
-	for (i = 0; i < data->system_data_sz; i += 1) {
-		if( data->system_data[i]->id == id ) {
-			free_data_obj(data->system_data[i]);
-			shift = 1;
-		}
-		if(shift == 1) {
-			data->system_data[i] = ((i+1) < data->system_data_sz) ? data->system_data[i+1] : NULL;
+	for(i = 0; i < data->obj_rec_sz; i += 1) {
+		if(id == data->obj_rec[i]->id) {
+			free_obj_rec(data->obj_rec[i]);
+			data->obj_rec_sz -= 1;
+			for(;i < data->obj_rec_sz; i += 1)
+				data->obj_rec[i] = data->obj_rec[i+1];
+			return EXIT_SUCCESS;
 		}
 	}
 	return EXIT_SUCCESS;
 }
 
-
-inline sysinf_t* get_data_obj(uint64_t id, master_global_data_t *data)
+inline obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data)
 {
 	// Brute force for now, I'll get fancy later
 	size_t i;
-
-	for(i = 0; i < data->system_data_sz; i += 1) {
-		if ( data->system_data[i]->id == id ) return data->system_data[i];
+	for(i=0; i < data->obj_rec_sz; i += 1) {
+		if(id == data->obj_rec[i]->id) {
+			syslog(LOG_DEBUG, "get_data_obj() found id %lx", id);
+			return data->obj_rec[i];
+		}
 	}
+	syslog(LOG_DEBUG, "no object with id %lx in store", id);
 	return NULL;
 }
 
-inline int add_new_data_obj(master_global_data_t *master, sysinf_t *newobj)
+inline int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
 {
 	size_t i;
-	if( master->system_data_sz >= DATA_STRUCT_AR_SIZE) {
+
+	if(newobj->id==0) return EXIT_FAILURE;
+
+	if( master->obj_rec_sz >= DATA_STRUCT_AR_SIZE) {
 		syslog(LOG_ERR, "data buffer full, increase to > %d",
 				DATA_STRUCT_AR_SIZE);
 		return EXIT_FAILURE;
 	}
 
-	for(i=0; i < master->system_data_sz; i += 1) {
-		if ( master->system_data[i]->id == newobj->id) return EXIT_FAILURE;
+	for(i=0; i < master->obj_rec_sz; i += 1) {
+		if( newobj->id == master->obj_rec[i]->id) return EXIT_FAILURE;
 	}
-	master->system_data[master->system_data_sz] = newobj;
-	master->system_data_sz += 1;
 
+	master->obj_rec[master->obj_rec_sz] = newobj;
+	master->obj_rec_sz += 1;
 
-	printf("added %lx, new size %lu\n", newobj->id, master->system_data_sz);
-	return EXIT_SUCCESS;
-}
+	syslog(LOG_DEBUG, "add_new_data_obj() added %lx, new size %lu\n",
+			 newobj->id, master->obj_rec_sz);
 
-int calc_counters(sysinf_t *from, sysinf_t *to)
-{
 	return EXIT_SUCCESS;
 }
 
@@ -334,162 +342,6 @@ static inline void free_cpu(cpu_inf_t *cpu)
     free(cpu);
 }
 
-#define FREECPUS(cpus) {\
-	while(cpus != NULL) {\
-		ptr = cpus->next;\
-		free_cpu(cpus);\
-		cpus = ptr;\
-	}\
-}
-
-#define FREEFSINF(fsinf) {\
-	while(fsinf != NULL) {\
-		ptr = fsinf->next;\
-		free_fsdev(fsinf);\
-		fsinf = ptr;\
-	}\
-}
-
-#define FREEFIFACES(ifaces) {\
-	while(ifaces != NULL) {\
-		ptr = ifaces->next;\
-		free_iface(ifaces);\
-		ifaces = ptr;\
-	}\
-}
-
-#define FREEFIODEVS(iodevs) {\
-	while(iodevs != NULL) {\
-		ptr = iodevs->next;\
-		free_iodev(iodevs);\
-		iodevs = ptr;\
-	}\
-}
-
-inline void free_data_obj(sysinf_t *dobj)
-{
-	if(dobj == NULL) return;
-	void *ptr; /* used in macros */
-	if(dobj->calc != NULL) free(dobj->calc);
-	if(dobj->cpu != NULL) FREECPUS(dobj->cpu);
-	if(dobj->fsinf != NULL) FREEFSINF(dobj->fsinf);
-	if(dobj->iface != NULL) FREEFIFACES(dobj->iface);
-	if(dobj->iodev != NULL) FREEFIODEVS(dobj->iodev);
-
-	if(dobj->hostname != NULL) free(dobj->hostname);
-	free(dobj);
-}
-
-
-#define SET_J_STRING(root, index, dest) {\
-    if( (tmpobj = json_object_get(root, index)) != NULL) {\
-        dest = strdup(json_string_value(tmpobj));\
-    }\
-}
-
-#define SET_J_REAL(root, index, dest) {\
-    if( (tmpobj = json_object_get(root, index)) != NULL) {\
-        *dest = json_real_value(tmpobj);\
-    }\
-}
-
-#define SET_J_INTEGER(root, index, dest) {\
-    if( (tmpobj = json_object_get(root, index)) != NULL) {\
-        *dest = json_integer_value(tmpobj);\
-    }\
-}
-
-inline static void cpustatic_from_json(const json_t* root, sysinf_t* target)
-{
-	json_t *tmparr = json_object_get(root, "cpus_static");
-	json_t *tmproot;
-	json_t *tmpobj;
-	cpu_inf_t *cpu;
-	size_t i;
-	u_int indx;
-
-	for(i = 0; tmparr != NULL && i < json_array_size(tmparr); i += 1) {
-
-		tmproot = json_array_get(tmparr, i);
-
-		/* snatch the CPU ID we need to update */
-		if((tmpobj = json_object_get(tmproot, "cpu")) == NULL) continue;
-		indx = json_integer_value(tmpobj);
-		json_decref(tmpobj);
-
-		/* get (or add) the cpu we're going to update */
-		cpu = get_cpu(indx, target);
-		if(cpu == NULL) cpu = add_cpu(indx, target);
-
-		//SET_J_INTEGER(tmproot, "cpu", &cpu->cpu);
-		SET_J_STRING(tmproot, "vendor_id", cpu->vendor_id);
-		SET_J_STRING(tmproot, "model", cpu->model);
-		SET_J_STRING(tmproot, "flags", cpu->flags);
-		SET_J_INTEGER(tmproot, "cache", &cpu->cache);
-		SET_J_STRING(tmproot, "cache_units", cpu->cache_units);
-		SET_J_INTEGER(tmproot, "phy_id", &cpu->phy_id);
-		SET_J_INTEGER(tmproot, "siblings", &cpu->siblings);
-		SET_J_INTEGER(tmproot, "core_id", &cpu->core_id);
-		SET_J_INTEGER(tmproot, "cpu_cores", &cpu->cpu_cores);
-		SET_J_REAL(tmproot, "bogomips", &cpu->bogomips);
-
-		json_decref(tmproot);
-	}
-	json_decref(tmparr);
-
-}
-
-inline static void cpudyn_from_json(const json_t* root, sysinf_t* target)
-{
-	json_t *jcpus = json_object_get(root, "cpus");
-	json_t *jcpu;
-	json_t *tmpobj;
-	cpu_inf_t *cpu;
-	size_t i, indx;
-
-	for(i = 0; jcpus != NULL && i < json_array_size(jcpus); i += 1) {
-
-		jcpu = json_array_get(jcpus, i);
-
-		/* snatch the CPU ID we need to update */
-		if((tmpobj = json_object_get(jcpu, "cpu")) == NULL) continue;
-		indx = json_integer_value(tmpobj);
-		json_decref(tmpobj);
-
-		/* get (or add) the cpu we're going to update */
-		cpu = get_cpu(indx, target);
-		if(cpu == NULL) cpu = add_cpu(indx, target);
-
-		SET_J_INTEGER(jcpu, "user", &cpu->user);
-		SET_J_INTEGER(jcpu, "nice", &cpu->nice);
-		SET_J_INTEGER(jcpu, "system", &cpu->system);
-		SET_J_INTEGER(jcpu, "idle", &cpu->idle);
-		SET_J_INTEGER(jcpu, "iowait", &cpu->iowait);
-		SET_J_INTEGER(jcpu, "irq", &cpu->irq);
-		SET_J_INTEGER(jcpu, "s_irq", &cpu->softirq);
-		SET_J_INTEGER(jcpu, "steal", &cpu->steal);
-		SET_J_INTEGER(jcpu, "guest", &cpu->guest);
-		SET_J_INTEGER(jcpu, "n_guest", &cpu->guest_nice);
-		SET_J_REAL(jcpu, "clock", &cpu->cpuMhz);
-
-		json_decref(jcpu);
-	}
-	json_decref(jcpus);
-}
-
-#define J_GET_S(jobj, key) {\
-	return strdup(json_string_value(json_object_get(jobj, key));\
-}
-
-#define J_GET_I(jobj, key) {\
-	return json_integer_value(json_object_get(jobj, key));\
-}
-
-#define J_GET_R(jobj, key) {\
-	return json_real_value(json_object_get(jobj, key));\
-}
-
-
 inline static cpu_inf_t* mkget_cpu(u_int cpu, sysinf_t *sysinf)
 {
 	cpu_inf_t *cpuobj = sysinf->cpu;
@@ -502,178 +354,106 @@ inline static cpu_inf_t* mkget_cpu(u_int cpu, sysinf_t *sysinf)
 	return add_cpu(cpu, sysinf);
 }
 
-sysinf_t* dataobj_from_json(json_t* msg)
-{
-	uint64_t id;
-	size_t indx, cpu;
-	sysinf_t *newobj = NULL;
-	const char *strbuf = json_string_value(json_object_get(msg, "hostid"));
-	json_t *obj, *arr;
-	fsinf_t *fsinf;
-	iodev_inf_t *iodevinf;
-	iface_inf_t *ifaceinf;
-	cpu_inf_t *cpuinf;
-
-	if(strbuf == NULL) return NULL;
-
-	sscanf(strbuf, "%lx", &id);
-
-	newobj = new_data_obj(id);
-
-	/* File system stats */
-	arr = json_object_get(msg, "fs");
-	if( json_is_array(arr) ) {
-		json_array_foreach(arr, indx, obj) {
-			strbuf = json_string_value(json_object_get(obj, "dev"));
-			if ( (fsinf = add_fsdev(strbuf, newobj)) != NULL ) {
-				fsinf->mountpoint = strdup(json_string_value(json_object_get(obj, "mountpoint")));
-				fsinf->fstype = strdup(json_string_value(json_object_get(obj, "fstype")));
-				fsinf->blks_total = json_integer_value(json_object_get(obj, "blks_total"));
-				fsinf->blks_free = json_integer_value(json_object_get(obj, "blks_free"));
-				fsinf->blks_avail = json_integer_value(json_object_get(obj, "blks_avail"));
-				fsinf->block_size = json_integer_value(json_object_get(obj, "block_size"));
-				fsinf->inodes_ttl = json_integer_value(json_object_get(obj, "inodes_ttl"));
-				fsinf->inodes_free = json_integer_value(json_object_get(obj, "inodes_free"));
-			}
-		}
-	}
-
-	/* Network interface stats */
-	arr = json_object_get(msg, "iface");
-	if( json_is_array(arr) ) {
-		json_array_foreach(arr, indx, obj) {
-			strbuf = json_string_value(json_object_get(obj, "dev"));
-			if ( (ifaceinf = add_iface(strbuf, newobj)) != NULL ) {
-				ifaceinf->rx_packets = json_integer_value(json_object_get(obj, "rx_packets"));
-				ifaceinf->rx_bytes = json_integer_value(json_object_get(obj, "rx_bytes"));
-				ifaceinf->rx_errs = json_integer_value(json_object_get(obj, "rx_errs"));
-				ifaceinf->rx_drop = json_integer_value(json_object_get(obj, "rx_drop"));
-				ifaceinf->rx_fifo = json_integer_value(json_object_get(obj, "rx_fifo"));
-				ifaceinf->rx_frame = json_integer_value(json_object_get(obj, "rx_frame"));
-				ifaceinf->rx_comp = json_integer_value(json_object_get(obj, "rx_comp"));
-				ifaceinf->rx_multi = json_integer_value(json_object_get(obj, "rx_multi"));
-				ifaceinf->tx_packets = json_integer_value(json_object_get(obj, "tx_packets"));
-				ifaceinf->tx_bytes = json_integer_value(json_object_get(obj, "tx_bytes"));
-				ifaceinf->tx_errs = json_integer_value(json_object_get(obj, "tx_errs"));
-				ifaceinf->tx_drop = json_integer_value(json_object_get(obj, "tx_drop"));
-				ifaceinf->tx_fifo = json_integer_value(json_object_get(obj, "tx_fifo"));
-				ifaceinf->tx_colls = json_integer_value(json_object_get(obj, "tx_colls"));
-				ifaceinf->tx_carr = json_integer_value(json_object_get(obj, "tx_carr"));
-				ifaceinf->tx_comp = json_integer_value(json_object_get(obj, "tx_comp"));
-			}
-		}
-	}
-
-	/* I/O devices */
-	arr = json_object_get(msg, "iodev");
-	if( json_is_array(arr) ) {
-		json_array_foreach(arr, indx, obj) {
-			strbuf = json_string_value(json_object_get(obj, "dev"));
-			if ( (iodevinf = add_iodev(strbuf, newobj)) != NULL ) {
-				iodevinf->reads = json_integer_value(json_object_get(obj, "reads"));
-				iodevinf->read_sectors = json_integer_value(json_object_get(obj, "read_sectors"));
-				iodevinf->reads_merged = json_integer_value(json_object_get(obj, "reads_merged"));
-				iodevinf->msec_reading = json_integer_value(json_object_get(obj, "msec_reading"));
-				iodevinf->writes = json_integer_value(json_object_get(obj, "writes"));
-				iodevinf->write_sectors = json_integer_value(json_object_get(obj, "write_sectors"));
-				iodevinf->writes_merged = json_integer_value(json_object_get(obj, "writes_merged"));
-				iodevinf->msec_writing = json_integer_value(json_object_get(obj, "msec_writing"));
-				iodevinf->current_ios = json_integer_value(json_object_get(obj, "current_ios"));
-				iodevinf->msec_ios = json_integer_value(json_object_get(obj, "msec_ios"));
-				iodevinf->weighted_ios = json_integer_value(json_object_get(obj, "weighted_ios"));
-			}
-		}
-	}
-
-	/* CPUS */
-	arr = json_object_get(msg, "cpus");
-	if ( json_is_array(arr) ) {
-		json_array_foreach(arr, indx, obj) {
-			cpu = json_integer_value(json_object_get(obj, "cpu"));
-			if ( (cpuinf = mkget_cpu(cpu, newobj)) != NULL ) {
-				cpuinf->user = json_integer_value(json_object_get(obj, "user"));
-				cpuinf->nice = json_integer_value(json_object_get(obj, "nice"));
-				cpuinf->system = json_integer_value(json_object_get(obj, "system"));
-				cpuinf->idle = json_integer_value(json_object_get(obj, "idle"));
-				cpuinf->iowait = json_integer_value(json_object_get(obj, "iowait"));
-				cpuinf->irq = json_integer_value(json_object_get(obj, "irq"));
-				cpuinf->softirq = json_integer_value(json_object_get(obj, "s_irq"));
-				cpuinf->steal = json_integer_value(json_object_get(obj, "steal"));
-				cpuinf->guest = json_integer_value(json_object_get(obj, "guest"));
-				cpuinf->guest_nice = json_integer_value(json_object_get(obj, "n_guest"));
-				cpuinf->cpuMhz = json_real_value(json_object_get(obj, "clock"));
-			}
-		}
-	}
-
-	arr = json_object_get(msg, "cpus_static");
-	if ( json_is_array(arr) ) {
-		json_array_foreach(arr, indx, obj) {
-			cpu = json_integer_value(json_object_get(obj, "cpu"));
-			if ( (cpuinf = mkget_cpu(cpu, newobj)) != NULL ) {
-				cpuinf->vendor_id = strdup(json_string_value(json_object_get(obj, "vendor_id")));
-				cpuinf->model = strdup(json_string_value(json_object_get(obj, "model")));
-				cpuinf->flags = strdup(json_string_value(json_object_get(obj, "flags")));
-				cpuinf->cache = json_integer_value(json_object_get(obj, "cache"));
-				cpuinf->cache_units = strdup(json_string_value(json_object_get(obj, "cache_units")));
-				cpuinf->phy_id = json_integer_value(json_object_get(obj, "phy_id"));
-				cpuinf->siblings = json_integer_value(json_object_get(obj, "siblings"));
-				cpuinf->core_id = json_integer_value(json_object_get(obj, "core_id"));
-				cpuinf->cpu_cores = json_integer_value(json_object_get(obj, "cpu_cores"));
-				cpuinf->bogomips = json_real_value(json_object_get(obj, "bogomips"));
-			}
-		}
-	}
-
-	obj = json_object_get(msg, "memory");
-	if(obj != NULL) {
-		newobj->mem_total = json_integer_value(json_object_get(obj, "total"));
-		newobj->mem_free = json_integer_value(json_object_get(obj, "free"));
-		newobj->mem_buffers = json_integer_value(json_object_get(obj, "buffers"));
-		newobj->mem_cache = json_integer_value(json_object_get(obj, "cache"));
-		newobj->swap_total = json_integer_value(json_object_get(obj, "swap_total"));
-		newobj->swap_free = json_integer_value(json_object_get(obj, "swap_free"));
-
-	}
-
-	/* Sysload and procs */
-	obj = json_object_get(msg, "sysload");
-	if(obj != NULL) {
-		newobj->load_1 = json_real_value(json_object_get(obj, "1min"));
-		newobj->load_5 = json_real_value(json_object_get(obj, "5min"));
-		newobj->load_15 = json_real_value(json_object_get(obj, "15min"));
-		newobj->procs_running = json_real_value(json_object_get(obj, "procs_run"));
-		newobj->procs_total = json_real_value(json_object_get(obj, "procs_total"));
-	}
-
-	/* Get CPU ttls */
-	obj = json_object_get(msg, "cpu_ttls");
-	if(obj != NULL) {
-		newobj->cpu_user = json_integer_value(json_object_get(obj, "user"));
-		newobj->cpu_nice = json_integer_value(json_object_get(obj, "nice"));
-		newobj->cpu_system = json_integer_value(json_object_get(obj, "system"));
-		newobj->cpu_idle = json_integer_value(json_object_get(obj, "idle"));
-		newobj->cpu_iowait = json_integer_value(json_object_get(obj, "iowait"));
-		newobj->cpu_irq = json_integer_value(json_object_get(obj, "irq"));
-		newobj->cpu_sirq = json_integer_value(json_object_get(obj, "s_irq"));
-		newobj->cpu_steal = json_integer_value(json_object_get(obj, "steal"));
-		newobj->cpu_guest = json_integer_value(json_object_get(obj, "guest"));
-		newobj->cpu_guest_nice = json_integer_value(json_object_get(obj, "n_guest"));
-		newobj->interrupts = json_integer_value(json_object_get(obj, "intrps"));
-		newobj->s_interrupts = json_integer_value(json_object_get(obj, "s_intrps"));
-		newobj->s_interrupts = json_integer_value(json_object_get(obj, "s_intrps"));
-		newobj->context_switches = json_integer_value(json_object_get(obj, "ctxt"));
-	}
-
-	obj = json_object_get(msg, "uptime");
-	if(obj != NULL) newobj->uptime = json_real_value(obj);
-	obj = json_object_get(msg, "idletime");
-	if(obj != NULL) newobj->idletime = json_real_value(obj);
-
-	return newobj;
+#define rate_from_jsonobjs(key, curobj, newobj, target, tdiff) {\
+	json_object_set(\
+		target,\
+		key,\
+		json_real(\
+			(float)(json_integer_value(json_object_get(newobj, key)) -\
+			json_integer_value(json_object_get(curobj, key)))/\
+			((float) tdiff.tv_sec +\
+			((float) tdiff.tv_usec/1000000))));\
 }
 
-int update_and_merge(sysinf_t *newobj, sysinf_t *oldobj)
+int calc_data_rates(json_t *standing, json_t *incomming)
 {
+	struct timeval diff, standing_ts, incomming_ts;
+	json_t *ts;
+	float rate;
+	json_t *tmp_st, *tmp_in, *tmp_calc, *tmp_arr_st, *tmp_arr_in;
+	size_t i;
 
+	if ((ts = json_object_get(standing, "ts")) == NULL) return EXIT_FAILURE;
+	standing_ts.tv_sec = json_integer_value(json_object_get(ts, "tv_sec"));
+	standing_ts.tv_usec = json_integer_value(json_object_get(ts, "tv_usec"));
+
+	if ((ts = json_object_get(incomming, "ts")) == NULL) return EXIT_FAILURE;
+	incomming_ts.tv_sec = json_integer_value(json_object_get(ts, "tv_sec"));
+	incomming_ts.tv_usec = json_integer_value(json_object_get(ts, "tv_usec"));
+
+	timersub(&incomming_ts, &standing_ts, &diff);
+
+	/* Set rate for CPU totals (cpu_ttls) ************************************/
+	tmp_in = json_object_get(incomming, "cpu_ttls");
+	tmp_st = json_object_get(standing, "cpu_ttls");
+	tmp_calc = json_object_get(tmp_st, "__rates");
+	if(tmp_calc == NULL)
+		json_object_set(tmp_st, "__rates", tmp_calc = json_object());
+	rate_from_jsonobjs("user", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("nice", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("system", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("idle", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("iowait", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("irq", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("s_irq", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("steal", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("guest", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("n_guest", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("intrps", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("s_intrps", tmp_st, tmp_in, tmp_calc, diff);
+	rate_from_jsonobjs("ctxt", tmp_st, tmp_in, tmp_calc, diff);
+
+	/* Set rates for individual CPUS *****************************************/
+	tmp_arr_in = json_object_get(incomming, "cpus");
+	tmp_arr_st = json_object_get(standing, "cpus");
+
+	for(i=0; i < json_array_size(tmp_arr_in); i += 1) {
+		tmp_in = json_array_get(tmp_arr_in, i);
+		tmp_st = json_array_get(tmp_arr_st, i);
+		tmp_calc = json_object_get(tmp_st, "__rates");
+		if(tmp_calc == NULL)
+			json_object_set(tmp_st, "__rates", tmp_calc = json_object());
+
+		rate_from_jsonobjs("user", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("nice", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("system", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("idle", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("iowait", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("irq", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("s_irq", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("steal", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("guest", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("n_guest", tmp_st, tmp_in, tmp_calc, diff);
+	}
+
+	/* Set rates for network counters ****************************************/
+	tmp_arr_in = json_object_get(incomming, "iface");
+	tmp_arr_st = json_object_get(standing, "iface");
+	for(i=0; i < json_array_size(tmp_arr_in); i += 1) {
+		tmp_in = json_array_get(tmp_arr_in, i);
+		tmp_st = json_array_get(tmp_arr_st, i);
+		tmp_calc = json_object_get(tmp_st, "__rates");
+		if(tmp_calc == NULL)
+			json_object_set(tmp_st, "__rates", tmp_calc = json_object());
+
+		rate_from_jsonobjs("rx_packets", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_bytes", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_errs", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_drop", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_fifo", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_frame", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_comp", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("rx_multi", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_packets", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_bytes", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_errs", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_drop", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_fifo", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_colls", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_carr", tmp_st, tmp_in, tmp_calc, diff);
+		rate_from_jsonobjs("tx_comp", tmp_st, tmp_in, tmp_calc, diff);
+	}
+	printf("%s\n", json_dumps(standing, JSON_INDENT(2)));
+
+	return EXIT_SUCCESS;
 }

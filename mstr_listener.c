@@ -151,19 +151,41 @@ static void apply_assmb_buf(
         json_str_assembly_bfr_t *assembly_buffer,
         master_global_data_t *data_master)
 {
-	sysinf_t *system_data = NULL;
-    json_error_t error;
-    json_t *root = json_loads(assembly_buffer->json_str, 0, &error);
-
-    if(root == NULL) {
+	json_error_t error;
+	obj_rec_t *standing;
+	obj_rec_t *incomming = malloc(sizeof(obj_rec_t));
+	incomming->record = json_loads(assembly_buffer->json_str, 0, &error);
+    if(incomming->record == NULL) {
     	syslog(LOG_WARNING,
     			"failed to parse JSON string from node id %lx, message id %lx",
     			assembly_buffer->id, assembly_buffer->msgid);
+    	free(incomming);
     	return;
     }
-    system_data = dataobj_from_json(root);
+    incomming->id = assembly_buffer->id;
 
-	json_decref(root);
+    syslog(LOG_DEBUG, "successfully encoded JSON object with id %lx",
+    		incomming->id);
+
+    if(incomming->id == 0) goto cleanup;
+
+    standing = get_obj_rec(incomming->id, data_master);
+
+	if(standing == NULL) {
+		add_obj_rec(data_master, incomming);
+	} else {
+		calc_data_rates(standing->record, incomming->record);
+		json_object_update(standing->record, incomming->record);
+		free_obj_rec(incomming);
+	}
+
+	return;
+
+	cleanup:
+	syslog(LOG_WARNING, "failed to process valid JSON object with id %lx",
+			incomming->id);
+	free_obj_rec(incomming);
+    return;
 }
 
 static void prune_assmbl_buf(json_str_assembly_bfr_t **assembly_buffer)
@@ -234,10 +256,11 @@ void *report_listener(void *dptr)
     freeaddrinfo(servinfo);
 
     /* Forget that dynamic shit, just allocate the array */
-    data_master->system_data = malloc(sizeof(sysinf_t*) * DATA_STRUCT_AR_SIZE);
-    memset(data_master->system_data, '\0',
-    		sizeof(sysinf_t*)*DATA_STRUCT_AR_SIZE);
-    data_master->system_data_sz = 0;
+    data_master->obj_rec = malloc(sizeof(obj_rec_t*)*DATA_STRUCT_AR_SIZE);
+    memset(data_master->obj_rec, '\0', sizeof(obj_rec_t*)*DATA_STRUCT_AR_SIZE);
+    data_master->obj_rec_sz = 0;
+
+    syslog(LOG_INFO, "listener thread launched");
 
     pktc=0;
     while(on) {

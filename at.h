@@ -259,19 +259,19 @@ typedef struct fsinf_s {
 typedef struct sysinf_calc_s {
 
     /* total CPU rates */
-    uint64_t interrupts;
-    uint64_t s_interrupts;
-    uint64_t context_switches;
-    uint64_t cpu_user;
-    uint64_t cpu_nice;
-    uint64_t cpu_system;
-    uint64_t cpu_idle;
-    uint64_t cpu_iowait;
-    uint64_t cpu_irq;
-    uint64_t cpu_sirq;
-    uint64_t cpu_steal;
-    uint64_t cpu_guest;
-    uint64_t cpu_guest_nice;
+    float interrupts;
+    float s_interrupts;
+    float context_switches;
+    float cpu_user;
+    float cpu_nice;
+    float cpu_system;
+    float cpu_idle;
+    float cpu_iowait;
+    float cpu_irq;
+    float cpu_sirq;
+    float cpu_steal;
+    float cpu_guest;
+    float cpu_guest_nice;
 
 } sysinf_calc_t;
 
@@ -312,6 +312,9 @@ typedef struct sysinf_s {
     uint64_t cpu_guest;
     uint64_t cpu_guest_nice;
 
+    /* Calculated rates for CPU values above */
+    sysinf_calc_t *calc; /* unused in agent */
+
     /* Dynamic device info */
     cpu_inf_t *cpu;
     size_t cpu_count;    /* unused in agent */
@@ -324,9 +327,6 @@ typedef struct sysinf_s {
 
     fsinf_t *fsinf;
     size_t fsinf_count;  /* unused in agent */
-
-    /* Calculated */
-    sysinf_calc_t *calc; /* unused in agent */
 
 } sysinf_t;
 
@@ -382,10 +382,14 @@ typedef struct rprt_hdr_s {
     struct sockaddr fromaddr;
 } rprt_hdr_t;
 
+typedef struct obj_rec_s {
+	uint64_t id;
+	json_t *record;
+} obj_rec_t;
 
 typedef struct master_global_data_s {
-    sysinf_t **system_data;
-    size_t system_data_sz;
+	obj_rec_t **obj_rec;
+    size_t obj_rec_sz;
 } master_global_data_t;
 
 /* Global statistics */
@@ -396,7 +400,10 @@ typedef struct sysstats_s {
 } sysstats_t;
 
 
-#endif /* AT_AGENT_H_ */
+#define GET_HOSTID_INT(jsonobj, integer) {\
+	sscanf(json_string_value(json_object_get(jsonobj, "hostid")), "%lx", integer);\
+}
+
 
 /******************************************************************************
  * CPU operations ************************************************************/
@@ -465,41 +472,26 @@ void *report_listener(void *dptr);
  * Master data ops ***********************************************************/
 
 /**
- * Take a JSON object and return a sysinf_t struct pointer if "target" is
- * NULL, otherwise apply data to "target" (add still return the affected
- * object.
+ * Fetch record with ID "id" from the master system data object
  */
-sysinf_t* dataobj_from_json(json_t *root);
+inline obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data);
 
 /**
- * Fetch data object with ID "id" from the master system data object
+ * Add obj_rec_t pointer to the master data object. Does not copy data so
+ * don't free source - it lives here how.
  */
-inline  sysinf_t* get_data_obj(uint64_t id, master_global_data_t* data);
-
-/**
- * Slip new data object "new" into the master system data object
- */
-inline int add_new_data_obj(master_global_data_t *data, sysinf_t *new);
-
+inline int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj);
 /**
  * Remove data object "id" from the master system data object
  */
-inline int rm_data_obj(uint64_t id, master_global_data_t *data);
+inline int rm_obj_rec(uint64_t id, master_global_data_t *data);
 
 /**
- * Free a data object (does not manage array)
+ * Free a data object. Simply calls json_decref() and frees the struct. May
+ * do more later.
  */
-inline void free_data_obj(sysinf_t *dobj);
+inline void free_obj_rec(obj_rec_t *dobj);
 
-/**
- * Calculate data-rates from counters by subtracting "to" from "from" and
- * apply them to "to"
- */
-int calc_counters(sysinf_t *from, sysinf_t *to);
+int calc_data_rates(json_t *standing, json_t *incomming);
 
-/**
- * Take new object, run counters for data rates then update data in standing
- * (old) object with new data.
- */
-int update_and_merge(sysinf_t *newobj, sysinf_t *oldobj);
-
+#endif /* AT_AGENT_H_ */
