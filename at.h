@@ -21,6 +21,8 @@
 #define DEFAULT_FS_MULT 20
 #define DEFAULT_RUNUSER "root"
 #define DEFAULT_REPORT_PORT "3456"
+#define DEFAULT_SERVER_PORT "4567"
+#define DEFAULT_LOG_LEVEL 4
 
 #define DEFAULT_MASTER_MON_RATE 5000000
 #define AGENT_PROFILE_DIR "/var/db/allthing"
@@ -354,9 +356,10 @@ typedef struct agent_config_s {
 
 typedef struct master_config_s {
     useconds_t mon_rate;
-    char *listen_port;
-    char *config_file;
-    char *runuser;
+    char listen_port[7];
+    char server_port[7];
+    char config_file[255];
+    char runuser[255];
     char daemon;
     int rprt_hndlrs;
     int log_level;
@@ -464,9 +467,9 @@ fsinf_t* del_fs(fsinf_t* fs, char* mountpoint);
 fsinf_t* init_fs(fsinf_t* fs);
 
 /******************************************************************************
- * Master node listener ******************************************************/
-
+ * Report and server listener threads ****************************************/
 void *report_listener(void *dptr);
+void *server_listener(void *dptr);
 
 /******************************************************************************
  * Master data ops ***********************************************************/
@@ -492,6 +495,9 @@ inline int rm_obj_rec(uint64_t id, master_global_data_t *data);
  */
 inline void free_obj_rec(obj_rec_t *dobj);
 
+/**
+ * Calculate rates from selected counters
+ */
 int calc_data_rates(json_t *standing, json_t *incomming);
 
 #endif /* AT_AGENT_H_ */

@@ -29,20 +29,28 @@ static int config_handler(
 
     if(strcmp(section, "global") == 0) {
         if(strcmp(name, "master_target_port") == 0)
-            cfg->listen_port = strdup(value);
+            strcpy(cfg->listen_port, value);
         if(strcmp(name, "listen_port") == 0)
-            cfg->listen_port = strdup(value);
+            strcpy(cfg->listen_port, value);
+        if(strcmp(name, "master_data_port") == 0)
+            strcpy(cfg->server_port, value);
     }
 
     if(strcmp(section, "master") == 0) {
         if(strcmp(name, "mon_loop_rate") == 0)
             cfg->mon_rate = atoi(value);
-        if(strcmp(name, "runuser") == 0)
-            cfg->runuser = strdup(value);
-        if(strcmp("name", "max_report_handlers") == 0)
+        if(strcmp(name, "runuser") == 0){
+            strcpy(cfg->runuser, value);
+        }
+        if(strcmp(name, "max_report_handlers") == 0)
             cfg->rprt_hndlrs = atoi(value);
+        if(strcmp(name, "log_level") == 0) {
+            cfg->log_level = atoi(value);
+            if(cfg->log_level < 0 || cfg->log_level > 7) {
+            	cfg->log_level = DEFAULT_LOG_LEVEL;
+            }
+        }
     }
-
     return 1;
 }
 
@@ -52,19 +60,12 @@ static int config_handler(
 static void set_cfg_defaults(master_config_t* cfg)
 {
     cfg->mon_rate = DEFAULT_MASTER_MON_RATE;
-    cfg->runuser = strdup(DEFAULT_RUNUSER);
-    cfg->config_file = strdup(DEFAULT_CONFIG);
-    cfg->listen_port = strdup(DEFAULT_REPORT_PORT);
+    strcpy(cfg->runuser, DEFAULT_RUNUSER);
+    strcpy(cfg->config_file, DEFAULT_CONFIG);
+    strcpy(cfg->server_port, DEFAULT_SERVER_PORT);
+    strcpy(cfg->listen_port, DEFAULT_REPORT_PORT);
     cfg->daemon = 1;
-    cfg->log_level = 7;
-}
-
-static void free_cfg(master_config_t* cfg)
-{
-	if(cfg->runuser != NULL) free(cfg->runuser);
-	if(cfg->listen_port != NULL) free(cfg->listen_port);
-	if(cfg->config_file != NULL) free(cfg->config_file);
-	free(cfg);
+    cfg->log_level = DEFAULT_LOG_LEVEL;
 }
 
 static void quitit(int signal)
@@ -97,6 +98,7 @@ int main(int argc, char *argv[])
     int rc;
     struct passwd *mememe;
     pthread_t node_listen;
+    pthread_t data_server;
     master_global_data_t *data_master;
     openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
 
@@ -129,13 +131,13 @@ int main(int argc, char *argv[])
             }
             break;
         case 'p':
-            cfg->listen_port = strdup(optarg);
+            strcpy(cfg->listen_port, optarg);
             break;
         case 'r':
             cfg->mon_rate = atoi(optarg)*1000000;
             break;
         case 'c':
-            cfg->config_file = strdup(optarg);
+            strcpy(cfg->config_file, optarg);
             /* Ok, we're doing this again (order is important!) */
             if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
                 syslog(LOG_ERR, "Can't load '%s'", cfg->config_file);
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
     }
     setlogmask(rc);
 
-    syslog(LOG_INFO, "starting with log level %d", cfg->log_level);
+    syslog(LOG_INFO, "starting with log level %d (%x)", cfg->log_level, rc);
 
         /* Handle some signals */
     if (signal (SIGINT, quitit) == SIG_IGN)
@@ -204,16 +206,23 @@ int main(int argc, char *argv[])
     /* Spin-off node listener thread */
     rc = pthread_create(
             &node_listen, NULL, report_listener, (void*) data_master);
+    rc = pthread_create(
+            &data_server, NULL, server_listener, (void*) data_master);
 
     /* Main (monitor) loop */
     for(mon_count=0; on; mon_count +=1) {
         usleep(cfg->mon_rate);
     }
 
+    syslog(LOG_CRIT, "main thread over, waiting on threads");
+
     pthread_join(node_listen, NULL);
 
     clear_data_master(data_master);
-    free_cfg(cfg);
+
+    free(cfg);
+
+    syslog(LOG_CRIT, "exited");
 
     return EXIT_SUCCESS;
 }

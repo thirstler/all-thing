@@ -7,8 +7,8 @@ VER=0.2
 
 all: at_agent at_master 
 
-at_master: mstr_dataops.o mstr_listener.o at_master.o ini.o
-	${CC} ${LDFLAGS_T} mstr_dataops.o mstr_listener.o at_master.o ini.o -o at_master
+at_master: mstr_dataops.o mstr_listener.o at_master.o ini.o mstr_datasrv.o
+	${CC} ${LDFLAGS_T} mstr_datasrv.o mstr_dataops.o mstr_listener.o at_master.o ini.o -o at_master
 
 at_agent: ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o
 	${CC} ${LDFLAGS} ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o -o at_agent
@@ -18,6 +18,9 @@ mstr_dataops.o: mstr_dataops.c at.h
 	
 mstr_listener.o: mstr_listener.c at.h
 	${CC} ${CFLAGS} -o mstr_listener.o -c mstr_listener.c
+
+mstr_datasrv.o: mstr_datasrv.c at.h
+	${CC} ${CFLAGS} -o mstr_datasrv.o -c mstr_datasrv.c
 
 at_master.o: at_master.c at.h
 	${CC} ${CFLAGS} -o at_master.o -c at_master.c

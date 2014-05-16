@@ -244,13 +244,13 @@ void *report_listener(void *dptr)
 
     if(lsock < 0) {
         syslog(LOG_ERR, "listener failed to get socket");
-        return NULL;
+        pthread_exit(NULL);
     }
 
     rc = bind(lsock, servinfo->ai_addr, servinfo->ai_addrlen);
     if(rc < 0) {
         syslog(LOG_ERR, "listener failed to bind to socket");
-        return NULL;
+        pthread_exit(NULL);
     }
 
     freeaddrinfo(servinfo);
@@ -321,6 +321,5 @@ void *report_listener(void *dptr)
     	asmbl_bfr_list = destroy_assmbl_buf(
     									asmbl_bfr_list->id, asmbl_bfr_list);
 
-
-    return NULL;
+    pthread_exit(NULL);
 }
