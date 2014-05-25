@@ -175,7 +175,8 @@ static void apply_assmb_buf(
 		add_obj_rec(data_master, incomming);
 	} else {
 		calc_data_rates(standing->record, incomming->record);
-		json_object_update(standing->record, incomming->record);
+		//json_object_update(standing->record, incomming->record);
+		recursive_merge(standing->record, incomming->record);
 		free_obj_rec(incomming);
 	}
 

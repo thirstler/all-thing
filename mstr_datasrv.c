@@ -18,13 +18,92 @@ extern master_config_t *cfg;
 
 #define CONN_CLOSED 1
 #define CONN_OPEN 2
+
+
+static char* parse_query(json_t *query, master_global_data_t *dptr)
+{
+	obj_rec_t *qresult;
+	uint64_t id;
+	/* boatloads of json object for juggling the query */
+	json_t	*outter_val, \
+			*inner_val, \
+			*answerobj, \
+			*answerobjs, \
+			*o_objtmp, \
+			*i_objtmp, \
+			*hostarr = json_object_get(query, "hostid"),
+			*queryarr = json_object_get(query, "get");
+	size_t o_index, i_index;
+	struct timeval ts;
+	char *strtmp, *result_str;
+
+	if(hostarr == NULL) {
+		return strdup("{\"ERROR\":\"no 'hostid' present in query\"}");
+	}
+	if(json_is_array(hostarr) == 0) {
+		return strdup(
+			"{\"ERROR\":\"'hostid' found in query but it's not an array\"}");
+	}
+
+	if(queryarr == NULL) {
+		return strdup("{\"ERROR\":\"no 'get' present in query\"}");
+	}
+	if(json_is_array(queryarr) == 0) {
+		return strdup(
+			"{\"ERROR\":\"'get' found in query but it's not an array\"}");
+	}
+
+	gettimeofday(&ts, NULL);
+	answerobj = json_pack("{s:{s:i,s:i}}",
+			"ts","tv_sec", ts.tv_sec, "tv_usec", ts.tv_usec);
+	answerobjs = json_object();
+	json_object_set(answerobj, "result", answerobjs);
+	json_array_foreach(hostarr, o_index, outter_val) {
+		sscanf(json_string_value(outter_val), "%lx", &id);
+		qresult = get_obj_rec(id, dptr);
+		if(qresult == NULL) continue;
+		o_objtmp = json_object();
+		json_array_foreach(queryarr, i_index, inner_val) {
+			strtmp = json_string_value(inner_val);
+
+			/* Special case */
+			if(strcmp(strtmp, "_ALL_") == 0) {
+				json_decref(o_objtmp);
+				o_objtmp = qresult->record;
+				break;
+			} else {
+				i_objtmp = json_object_get(qresult->record,
+						json_string_value(inner_val));
+				if(i_objtmp == NULL) continue;
+				json_object_set_new(o_objtmp, strtmp, i_objtmp);
+			}
+		}
+		if(json_object_size(o_objtmp) > 0) {
+			json_object_set_new(answerobjs, json_string_value(outter_val), o_objtmp);
+		} else {
+			json_decref(o_objtmp);
+		}
+	}
+
+	if(answerobj != NULL) {
+		result_str = json_dumps(answerobj, JSON_COMPACT);
+		json_decref(answerobjs);
+		json_decref(answerobj);
+		return result_str;
+	}
+	return NULL;
+}
+
 static int query_handler(int fd, master_global_data_t *dptr)
 {
 	int nbytes, i;
 	static char buf[1024];
 	static struct rusage rusage;
 	char *json_ptr;
-	json_t *jobjbf, *jarbf = json_array();
+	json_t *jquery, *jobjbf, *jarbf;
+	json_error_t jerr;
+	char *strresult;
+
 
 	memset(buf, '\0', 1024);
 
@@ -43,6 +122,7 @@ static int query_handler(int fd, master_global_data_t *dptr)
 	} else {
 
 		if(strcmp(buf, "list\n") == 0) {
+			jarbf = json_array();
 			for(i = 0; i < dptr->obj_rec_sz; i+=1) {
 				jobjbf = json_object();
 				json_object_set(jobjbf, "id",
@@ -54,6 +134,7 @@ static int query_handler(int fd, master_global_data_t *dptr)
 			json_ptr = json_dumps(jarbf, JSON_COMPACT);
 			send(fd, json_ptr, strlen(json_ptr)+1, 0);
 			free(json_ptr);
+			json_array_clear(jarbf);
 			json_decref(jarbf);
 		}
 
@@ -77,7 +158,22 @@ static int query_handler(int fd, master_global_data_t *dptr)
 			json_decref(jobjbf);
 		}
 
-
+		if( strncmp(buf, "query:", 6) == 0) {
+			printf("%s\n", buf+6);
+			jquery = json_loads(buf+6, JSON_DISABLE_EOF_CHECK, &jerr);
+			if(jquery == NULL) {
+				syslog(LOG_WARNING,
+						"error loading query: %s at line %d, col %d (pos: %d)",
+						jerr.text, jerr.line, jerr.column, jerr.position);
+			} else {
+				strresult = parse_query(jquery, dptr);
+				if(strresult != NULL) {
+					send(fd, strresult, strlen(strresult)+1, 0);
+					free(strresult);
+				}
+				json_decref(jquery);
+			}
+		}
 	}
 	return CONN_OPEN;
 }
