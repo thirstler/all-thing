@@ -234,7 +234,13 @@ void *report_listener(void *dptr)
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = AI_PASSIVE;
 
-    if ((rc = getaddrinfo(NULL, cfg->listen_port, &hints, &servinfo)) != 0) {
+    /* Set wild card address*/
+    if( strcmp(cfg->listen_addr, "*") == 0) {
+    	free(cfg->listen_addr);
+    	cfg->listen_addr = strdup("0.0.0.0");
+    }
+
+    if ((rc = getaddrinfo(cfg->listen_addr, cfg->listen_port, &hints, &servinfo)) != 0) {
         syslog(LOG_ERR, "getaddrinfo error: %s", gai_strerror(rc));
         exit(1);
     }
@@ -266,7 +272,9 @@ void *report_listener(void *dptr)
     pktc=0;
     while(on) {
 
+    	/* clear the buffer before using it */
         memset(recv_buffer, '\0', UDP_SEND_SZ+1);
+
         rc = recvfrom(lsock,
                 (void*)recv_buffer,
                 UDP_SEND_SZ, 0,
@@ -310,6 +318,8 @@ void *report_listener(void *dptr)
             if( (pktc % ASMBL_BUF_PRUNE_COUNT) == 0)
                 prune_assmbl_buf(&asmbl_bfr_list);
 
+        } else if (strncmp(recv_buffer, "MARK", 4) == 0) {
+        	continue;
         } else if(sscanf(recv_buffer, "<<%s exited>>", strbuf) == 1) {
             syslog(LOG_INFO, "host ID %s has stopped its agent\n", strbuf);
         }  else {
@@ -322,5 +332,6 @@ void *report_listener(void *dptr)
     	asmbl_bfr_list = destroy_assmbl_buf(
     									asmbl_bfr_list->id, asmbl_bfr_list);
 
+    syslog(LOG_CRIT, "node listener thread exited");
     pthread_exit(NULL);
 }

@@ -1,18 +1,21 @@
 CC=gcc
-CFLAGS:=-g -m64 -Wall
-LDFLAGS:=-g -lm -ljansson 
-LDFLAGS_T:=$(LDFLAGS) -lpthread
+CFLAGS:=-g -m64 -Wall -O1
+LDFLAGS:=-g -lm -ljansson -lpthread
 DESTDIR:=
-VER=0.2
+MASTER_LDFLAGS:=${LDFLAGS} -lpq
+AGENT_LDFLAGS:=${LDFLAGS}
 
 all: at_agent at_master 
 
-at_master: mstr_dataops.o mstr_listener.o at_master.o ini.o mstr_datasrv.o
-	${CC} ${LDFLAGS_T} mstr_datasrv.o mstr_dataops.o mstr_listener.o at_master.o ini.o -o at_master
+at_master: mstr_dataops.o mstr_listener.o at_master.o ini.o mstr_datasrv.o at_db.o
+	${CC} ${MASTER_LDFLAGS} mstr_datasrv.o mstr_dataops.o mstr_listener.o at_master.o ini.o at_db.o -o at_master
 
 at_agent: ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o
-	${CC} ${LDFLAGS} ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o -o at_agent
+	${CC} ${AGENT_LDFLAGS} ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o -o at_agent
 
+at_db.o: at.h at_db.h at_db.c
+	${CC} ${MASTER_LDFLAGS} -o at_db.o -c at_db.c
+	
 mstr_dataops.o: mstr_dataops.c at.h
 	${CC} ${CFLAGS} -o mstr_dataops.o -c mstr_dataops.c
 	
@@ -59,6 +62,10 @@ install-master: at_master
 	install -s -groot -oallthing -m0700 ./at_master ${DESTDIR}/usr/sbin/at_master
 	[ -f ${DESTDIR}/etc/allthing.conf ] || install -groot -oroot -m0640 ./config/allthing.conf ${DESTDIR}/etc/allthing.conf
 
+
+# For creating tarballs for SRPM generation
+VER=0.6
+
 at_agent-tar:
 	mkdir -p ./all-thing-agent-${VER}/config
 	cp -a *.c *.h Makefile ./all-thing-agent-${VER}/
@@ -74,5 +81,5 @@ at_master-tar:
 	rm -rf ./all-thing-master-${VER}
 		
 clean:
-	rm -f *.o at_agent at_master *.tar core.*
+	rm -f *.o at_agent at_master *.tar *.tar.gz core.*
 	

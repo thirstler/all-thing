@@ -13,8 +13,10 @@
 #include <syslog.h>
 #include <pthread.h>
 #include <netinet/in.h>
+#include <libpq-fe.h>
 #include "ini.h"
 #include "at.h"
+#include "at_db.h"
 
 char on;
 master_config_t *cfg;
@@ -37,6 +39,10 @@ static int config_handler(
     }
 
     if(strcmp(section, "master") == 0) {
+    	if(strcmp(name, "report_listen_addr") == 0)
+    		cfg->listen_addr = strdup(value);
+    	if(strcmp(name, "server_listen_addr") == 0)
+    	    cfg->server_addr = strdup(value);
         if(strcmp(name, "mon_loop_rate") == 0)
             cfg->mon_rate = atoi(value);
         if(strcmp(name, "runuser") == 0){
@@ -51,6 +57,15 @@ static int config_handler(
             }
         }
     }
+
+    /* This info is only held until the db connection is established */
+    if(strcmp(section, "database") == 0) {
+		if(strcmp(name, "hostname") == 0)	cfg->db_host = strdup(value);
+		if(strcmp(name, "port") == 0) 		cfg->db_port = strdup(value);
+		if(strcmp(name, "username") == 0) 		cfg->db_user = strdup(value);
+		if(strcmp(name, "password") == 0)	cfg->db_pw = strdup(value);
+		if(strcmp(name, "database") == 0)	cfg->db_db = strdup(value);
+	}
     return 1;
 }
 
@@ -91,6 +106,33 @@ static void clear_data_master(master_global_data_t *data_master)
 	free(data_master);
 }
 
+/*
+ * This opens a connection to the data server.
+ */
+static int netsock()
+{
+    struct addrinfo hints;
+    struct addrinfo *res;
+    int rsock = 0;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    int rc = getaddrinfo("localhost", cfg->listen_port, &hints, &res);
+    if(rc != 0) return 0;
+
+    rsock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+
+    /* All UDP but I want rsock to be a standing descriptor */
+    connect(rsock, res->ai_addr, res->ai_addrlen);
+
+    free(res);
+
+    return rsock;
+}
+
 int main(int argc, char *argv[])
 {
     on = 1;
@@ -101,6 +143,8 @@ int main(int argc, char *argv[])
     pthread_t data_server;
     master_global_data_t *data_master;
     openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
+    int selfie;
+	PGconn *pgconn;
 
     /* Allocate config object and set defaults */
     cfg = malloc(sizeof(master_config_t));
@@ -162,7 +206,6 @@ int main(int argc, char *argv[])
 
     /* forking */
     if(cfg->daemon) {
-    	printf("forking\n");
         rc = fork();
         if(rc != 0) {
             exit(EXIT_SUCCESS);
@@ -171,7 +214,6 @@ int main(int argc, char *argv[])
         fclose(stdout);
         openlog("at_master", LOG_CONS, LOG_USER);
     } else {
-    	printf("not forking\n");
         openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
     }
 
@@ -189,7 +231,7 @@ int main(int argc, char *argv[])
     }
     setlogmask(rc);
 
-    syslog(LOG_INFO, "starting with log level %d (%x)", cfg->log_level, rc);
+    syslog(LOG_CRIT, "starting up with log level %d (%x)", cfg->log_level, rc);
 
         /* Handle some signals */
     if (signal (SIGINT, quitit) == SIG_IGN)
@@ -203,18 +245,30 @@ int main(int argc, char *argv[])
     data_master->obj_rec = NULL;
     data_master->obj_rec_sz = 0;
 
+    /* Connect to database */
+    pgconn = db_connect(cfg);
+    mk_cache_tbl(pgconn);
+
     /* Spin-off node listener thread */
     rc = pthread_create(
             &node_listen, NULL, report_listener, (void*) data_master);
     rc = pthread_create(
             &data_server, NULL, server_listener, (void*) data_master);
 
+    /* Get a socket ready to self trigger */
+    selfie = netsock();
+
     /* Main (monitor) loop */
     for(mon_count=0; on; mon_count +=1) {
         usleep(cfg->mon_rate);
+
+        snap_rec_tbls(data_master, pgconn);
+
+        /* Send a packet to self, keeps the listener loop moving */
+        send(selfie, "MARK", 4, 0);
     }
 
-    syslog(LOG_CRIT, "main thread over, waiting on threads");
+    syslog(LOG_CRIT, "main thread exited");
 
     pthread_join(node_listen, NULL);
 
@@ -222,7 +276,7 @@ int main(int argc, char *argv[])
 
     free(cfg);
 
-    syslog(LOG_CRIT, "exited");
+    syslog(LOG_CRIT, "stick a fork in me, I'm done");
 
     return EXIT_SUCCESS;
 }

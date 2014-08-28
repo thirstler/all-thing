@@ -19,6 +19,7 @@
 #define DEFAULT_IFACE_MULT 1
 #define DEFAULT_IODEV_MULT 1
 #define DEFAULT_FS_MULT 20
+#define DEFAULT_METADATA_MULT 60
 #define DEFAULT_RUNUSER "root"
 #define DEFAULT_REPORT_PORT "3456"
 #define DEFAULT_SERVER_PORT "4567"
@@ -53,6 +54,7 @@
 #define POLL_UPTIME      0x00000020
 #define POLL_FS          0x00000040
 #define RPRT_CPU_SSTATIC 0x00000080
+#define RPRT_METADATA    0x00000100
 
 /* packet assembly buffer errors */
 int asmblerr;
@@ -120,19 +122,6 @@ Arguments:\n\
     }\
 }
 
-typedef struct cpu_inf_calc_s {
-    uint64_t user;
-    uint64_t nice;
-    uint64_t system;
-    uint64_t idle;
-    uint64_t iowait;
-    uint64_t irq;
-    uint64_t softirq;
-    uint64_t steal;
-    uint64_t guest;
-    uint64_t guest_nice;
-} cpu_inf_calc_t;
-
 typedef struct cpu_inf_s {
     u_int cpu;
     char *vendor_id;
@@ -159,28 +148,7 @@ typedef struct cpu_inf_s {
     void *prev;
     void *next;
 
-    cpu_inf_calc_t *calc;
-
 } cpu_inf_t;
-
-typedef struct iface_inf_calc_s {
-    uint64_t recv_bytes;
-    uint64_t recv_packets;
-    uint64_t recv_errs;
-    uint64_t recv_drop;
-    uint64_t recv_fifo;
-    uint64_t recv_frame;
-    uint64_t recv_compressed;
-    uint64_t recv_multicasts;
-    uint64_t trns_bytes;
-    uint64_t trns_packets;
-    uint64_t trns_errs;
-    uint64_t trns_drop;
-    uint64_t trns_fifo;
-    uint64_t trns_colls;
-    uint64_t trns_carrier;
-    uint64_t trns_compressed;
-} iface_inf_calc_t;
 
 typedef struct iface_inf_s {
     char *dev;
@@ -205,24 +173,7 @@ typedef struct iface_inf_s {
     void *prev;
     void *next;
 
-    iface_inf_calc_t *calc;
-
 } iface_inf_t;
-
-
-typedef struct iodev_inf_calc_s {
-    uint64_t reads;
-    uint64_t reads_merged;
-    uint64_t read_sectors;
-    uint64_t msec_reading;
-    uint64_t writes;
-    uint64_t writes_merged;
-    uint64_t write_sectors;
-    uint64_t msec_writing;
-    uint64_t current_ios;
-    uint64_t msec_ios;
-    uint64_t weighted_ios;
-} iodev_inf_calc_t;
 
 typedef struct iodev_inf_s {
     char *dev;
@@ -239,9 +190,6 @@ typedef struct iodev_inf_s {
     uint64_t weighted_ios;
     void *prev;
     void *next;
-
-    iodev_inf_calc_t *calc;
-
 } iodev_inf_t;
 
 typedef struct fsinf_s {
@@ -257,25 +205,6 @@ typedef struct fsinf_s {
     void *prev;
     void *next;
 } fsinf_t;
-
-typedef struct sysinf_calc_s {
-
-    /* total CPU rates */
-    float interrupts;
-    float s_interrupts;
-    float context_switches;
-    float cpu_user;
-    float cpu_nice;
-    float cpu_system;
-    float cpu_idle;
-    float cpu_iowait;
-    float cpu_irq;
-    float cpu_sirq;
-    float cpu_steal;
-    float cpu_guest;
-    float cpu_guest_nice;
-
-} sysinf_calc_t;
 
 typedef struct sysinf_s {
     char *hostname;
@@ -314,27 +243,17 @@ typedef struct sysinf_s {
     uint64_t cpu_guest;
     uint64_t cpu_guest_nice;
 
-    /* Calculated rates for CPU values above */
-    sysinf_calc_t *calc; /* unused in agent */
-
     /* Dynamic device info */
     cpu_inf_t *cpu;
-    size_t cpu_count;    /* unused in agent */
-
     iface_inf_t *iface;
-    size_t iface_count;  /* unused in agent */
-
     iodev_inf_t *iodev;
-    size_t iodev_count;  /* unused in agent */
-
     fsinf_t *fsinf;
-    size_t fsinf_count;  /* unused in agent */
 
 } sysinf_t;
 
 
 typedef struct agent_config_s {
-    useconds_t master_rate; /* in microseconds */
+    useconds_t master_rate;
     char *report_host;
     char *report_port;
     char *group;
@@ -343,6 +262,7 @@ typedef struct agent_config_s {
     char *runuser;
     char *config_file;
     char daemon;
+    int log_level;
     u_int cpu_mult;
     u_int cpu_sstatic_mult;
     u_int mem_mult;
@@ -351,18 +271,28 @@ typedef struct agent_config_s {
     u_int fs_mult;
     u_int sysload_mult;
     u_int uptime_mult;
+    u_int metadata_mult;
 } agent_config_t;
 
 
 typedef struct master_config_s {
     useconds_t mon_rate;
+    char *listen_addr;
     char listen_port[7];
+    char *server_addr;
     char server_port[7];
     char config_file[255];
     char runuser[255];
     char daemon;
     int rprt_hndlrs;
     int log_level;
+
+    /* database info cleared after connection established */
+    char *db_host;
+    char *db_port;
+    char *db_db;
+    char *db_user;
+    char *db_pw;
 
 } master_config_t;
 
@@ -396,11 +326,11 @@ typedef struct master_global_data_s {
 } master_global_data_t;
 
 /* Global statistics */
-typedef struct sysstats_s {
+typedef struct agent_sysstats_s {
     u_int cpu_count;
     u_int iodev_count;
     u_int iface_count;
-} sysstats_t;
+} agent_sysstats_t;
 
 
 #define GET_HOSTID_INT(jsonobj, integer) {\
@@ -430,7 +360,7 @@ void init_proc(cpu_inf_t* cpu);
 inline char* get_cpuinfstr(char* buffer);
 
 /******************************************************************************
- * IFace operations **********************************************************/
+ * Iface operations **********************************************************/
 
 void dump_ifacedata(iface_inf_t* iface);
 
@@ -499,5 +429,11 @@ inline void free_obj_rec(obj_rec_t *dobj);
  * Calculate rates from selected counters
  */
 int calc_data_rates(json_t *standing, json_t *incomming);
+
+/*
+ * Recursively deep-merge JSON object src into JSON object dest. Should leave
+ * any keys not present in src alone in dest.
+ */
+void recursive_merge(json_t *dest, json_t *src);
 
 #endif /* AT_AGENT_H_ */

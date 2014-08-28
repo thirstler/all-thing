@@ -7,7 +7,7 @@
 #include <net/if.h>
 #include "at.h"
 
-extern sysstats_t sysinf;
+extern agent_sysstats_t sysinf;
 
 iodev_inf_t* del_iodev(iodev_inf_t* iodev, char* devname)
 {

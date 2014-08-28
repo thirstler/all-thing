@@ -7,7 +7,7 @@
 #include <net/if.h>
 #include "at.h"
 
-extern sysstats_t sysinf;
+extern agent_sysstats_t sysinf;
 
 void set_semistatic_iface_inf(iface_inf_t* iface)
 {

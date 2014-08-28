@@ -7,7 +7,7 @@
 #include <net/if.h>
 #include "at.h"
 
-extern sysstats_t sysinf;
+extern agent_sysstats_t sysinf;
 
 cpu_inf_t* del_cpu(cpu_inf_t* cpu, u_int proc)
 {

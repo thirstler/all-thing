@@ -12,8 +12,8 @@
 #include <pwd.h>
 #include <syslog.h>
 #include <sys/time.h>
-#include <jansson.h>
 #include <sys/stat.h>
+#include <jansson.h>
 #include "ini.h"
 #include "at.h"
 
@@ -74,9 +74,14 @@ static void set_cfg_defaults(agent_config_t* cfg)
     cfg->iface_mult = DEFAULT_IFACE_MULT;
     cfg->iodev_mult = DEFAULT_IODEV_MULT;
     cfg->fs_mult = DEFAULT_FS_MULT;
+    cfg->metadata_mult = DEFAULT_METADATA_MULT;
     cfg->runuser = strdup(DEFAULT_RUNUSER);
     cfg->config_file = strdup(DEFAULT_CONFIG);
+    cfg->location = NULL;
+    cfg->contact = NULL;
+    cfg->group = NULL;
     cfg->daemon = 1;
+    cfg->log_level = DEFAULT_LOG_LEVEL;
 }
 
 static void set_data_hostname(sysinf_t* hd)
@@ -175,6 +180,8 @@ static int config_handler(
             cfg->cpu_mult = atoi(value);
         if(strcmp(name, "cpu_static.poll_mult") == 0)
             cfg->cpu_sstatic_mult = atoi(value);
+        if(strcmp(name, "metadata.poll_mult") == 0)
+            cfg->metadata_mult = atoi(value);
         if(strcmp(name, "memory.poll_mult") == 0)
             cfg->mem_mult = atoi(value);
         if(strcmp(name, "diskio.poll_mult") == 0)
@@ -187,6 +194,8 @@ static int config_handler(
             cfg->sysload_mult = atoi(value);
         if(strcmp(name, "uptime.poll_mult") == 0)
             cfg->uptime_mult = atoi(value);
+        if(strcmp(name, "log_level") == 0)
+            cfg->log_level = atoi(value);
         if(strcmp(name, "location") == 0) {
             if(cfg->location != NULL) free(cfg->location);
             cfg->location = strdup(value);
@@ -218,6 +227,7 @@ inline int get_poll_bits(int count, agent_config_t *cfg)
     if( (count % cfg->uptime_mult) == 0) sw |= POLL_UPTIME;
     if( (count % cfg->fs_mult) == 0) sw |= POLL_FS;
     if( (count % cfg->cpu_sstatic_mult) == 0) sw |= RPRT_CPU_SSTATIC;
+    if( (count % cfg->metadata_mult) == 0) sw |= RPRT_METADATA;
     return sw;
 }
 
@@ -231,14 +241,29 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
     fsinf_t *fsptr;
     char *res = NULL;
 
-    json_object_set_new(root = json_object(), "hostname",
-            json_string_nocheck(host_data->hostname));
+    tmpobj = json_pack("{ss}", "hostname", host_data->hostname);
+
+    if(pollsw & POLL_UPTIME) {
+        json_object_set_new(tmpobj, "uptime", json_real(host_data->uptime));
+        json_object_set_new(tmpobj, "idletime", json_real(host_data->idletime));
+    }
+
+    json_object_set_new(root = json_object(), "misc", tmpobj);
 
     tmpobj = json_pack("{sIsI}",
             "tv_sec",host_data->sample_tv.tv_sec,
             "tv_usec", host_data->sample_tv.tv_usec);
     json_object_set_new(root, "ts", tmpobj);
     json_object_set_new(root, "hostid", json_string_nocheck(hexid));
+
+
+    if(pollsw & RPRT_METADATA) {
+    	tmpobj = json_pack("{ssssss}",
+    			"location", cfg->location,
+    			"contact", cfg->contact,
+    			"group", cfg->group);
+    	json_object_set_new(root, "meta", tmpobj);
+    }
 
     if(pollsw & POLL_FS) {
 
@@ -271,6 +296,12 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         ifaceptr = host_data->iface;
         while(ifaceptr != NULL) {
 
+        	/* We don't need inactive devices */
+        	if(ifaceptr->rx_packets+ifaceptr->tx_packets == 0) {
+        		ifaceptr = ifaceptr->next;
+        		continue;
+        	}
+
             tmpobj = json_pack("{sssIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsI}",
                     "dev", ifaceptr->dev,
                     "rx_packets", ifaceptr->rx_packets,
@@ -302,6 +333,12 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         tmpar = json_array();
         iodevptr = host_data->iodev;
         while(iodevptr != NULL) {
+
+        	/* We don't need inactive devices */
+        	if(iodevptr->reads+iodevptr->writes == 0) {
+        		iodevptr = iodevptr->next;
+        		continue;
+        	}
 
             tmpobj = json_pack("{sssIsIsIsIsIsIsIsIsIsIsI}",
                     "dev", iodevptr->dev,
@@ -421,14 +458,10 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
     }
 
-    if(pollsw & POLL_UPTIME) {
-        json_object_set_new(root, "uptime", json_real(host_data->uptime));
-        json_object_set_new(root, "idletime", json_real(host_data->idletime));
-    }
-
     res = json_dumps(root, JSON_COMPACT);
     //res = json_dumps(root, JSON_INDENT(2));
 
+    json_object_clear(root);
     json_decref(root);
 
     return res;
@@ -739,6 +772,21 @@ int main(int argc, char *argv[])
         openlog("at_agent", LOG_CONS|LOG_PERROR, LOG_USER);
         syslog(LOG_DEBUG, "running in foreground");
     }
+    /* Set the log mask */
+	rc = 0;
+	switch(cfg->log_level) {
+	case 7: rc |= LOG_MASK(LOG_DEBUG);
+	case 6: rc |= LOG_MASK(LOG_INFO);
+	case 5: rc |= LOG_MASK(LOG_NOTICE);
+	case 4: rc |= LOG_MASK(LOG_WARNING);
+	case 3: rc |= LOG_MASK(LOG_ERR);
+	case 2: rc |= LOG_MASK(LOG_CRIT);
+	case 1: rc |= LOG_MASK(LOG_ALERT);
+	case 0: rc |= LOG_MASK(LOG_EMERG);
+	}
+	setlogmask(rc);
+
+	printf("log level/mask %i/%x\n", cfg->log_level, rc);
 
     /* Handle some signals */
     if (signal (SIGINT, quitit) == SIG_IGN)
