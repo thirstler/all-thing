@@ -16,6 +16,8 @@
 #include <jansson.h>
 #include "at.h"
 
+extern master_config_t *cfg;
+
 inline void free_obj_rec(obj_rec_t *dobj)
 {
 	if(dobj == NULL) return;
@@ -69,6 +71,9 @@ inline int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
 	for(i=0; i < master->obj_rec_sz; i += 1) {
 		if( newobj->id == master->obj_rec[i]->id) return EXIT_FAILURE;
 	}
+
+	newobj->commit_rate = cfg->def_commit_rate;
+	newobj->last_commit = time(NULL);
 
 	master->obj_rec[master->obj_rec_sz] = newobj;
 	master->obj_rec_sz += 1;

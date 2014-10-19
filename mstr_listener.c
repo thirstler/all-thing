@@ -10,10 +10,13 @@
 #include <search.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <libpq-fe.h>
 #include "at.h"
+#include "at_db.h"
 
 extern char on;
 extern master_config_t *cfg;
+extern pthread_mutex_t db_queue_ops_mtx;
 
 #ifdef DDEBUG
 static size_t get_ab_lll(json_str_assembly_bfr_t *ll)
@@ -154,6 +157,8 @@ static void apply_assmb_buf(
 	json_error_t error;
 	obj_rec_t *standing;
 	obj_rec_t *incomming = malloc(sizeof(obj_rec_t));
+	time_t nownow = time(NULL);
+
 	incomming->record = json_loads(assembly_buffer->json_str, 0, &error);
     if(incomming->record == NULL) {
     	syslog(LOG_WARNING,
@@ -173,11 +178,20 @@ static void apply_assmb_buf(
 
 	if(standing == NULL) {
 		add_obj_rec(data_master, incomming);
+		/* Write to cache in-line (no queue) when it's a first occurrence */
+		write_agent_to_cache(incomming, 1);
+		init_record_tbl(incomming);
 	} else {
 		calc_data_rates(standing->record, incomming->record);
-		//json_object_update(standing->record, incomming->record);
 		recursive_merge(standing->record, incomming->record);
 		free_obj_rec(incomming);
+
+		cache_update_to_db_ops_queue(standing, data_master->data_ops_queue);
+
+		if( (nownow - standing->last_commit) >= standing->commit_rate ) {
+			standing->last_commit = nownow;
+			db_commit_to_db_ops_queue(standing, data_master->data_ops_queue);
+		}
 	}
 
 	return;

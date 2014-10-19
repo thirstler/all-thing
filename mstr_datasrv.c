@@ -19,7 +19,6 @@ extern master_config_t *cfg;
 #define CONN_CLOSED 1
 #define CONN_OPEN 2
 
-
 static char* parse_query(json_t *query, master_global_data_t *dptr)
 {
 	obj_rec_t *qresult;
@@ -176,7 +175,6 @@ static int query_handler(int fd, master_global_data_t *dptr)
 
 		/* Query data objects */
 		if( strncmp(buf, "query:", 6) == 0) {
-			printf("%s\n", buf+6);
 			jquery = json_loads(buf+6, JSON_DISABLE_EOF_CHECK, &jerr);
 			if(jquery == NULL) {
 				syslog(LOG_WARNING,

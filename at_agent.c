@@ -241,6 +241,8 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
     fsinf_t *fsptr;
     char *res = NULL;
 
+    root = json_object();
+
     tmpobj = json_pack("{ss}", "hostname", host_data->hostname);
 
     if(pollsw & POLL_UPTIME) {
@@ -248,7 +250,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         json_object_set_new(tmpobj, "idletime", json_real(host_data->idletime));
     }
 
-    json_object_set_new(root = json_object(), "misc", tmpobj);
+    json_object_set_new(root, "misc", tmpobj);
 
     tmpobj = json_pack("{sIsI}",
             "tv_sec",host_data->sample_tv.tv_sec,
@@ -678,6 +680,8 @@ int main(int argc, char *argv[])
     char *json_str;
     struct passwd *mememe;
     char *forced_id = NULL;
+    FILE *pidf;
+    pid_t mypid;
 
     init_flag = 0;
     on = 1;
@@ -749,15 +753,6 @@ int main(int argc, char *argv[])
 
     syslog(LOG_INFO, "using host id %lx", hostid);
 
-    /* Set user */
-    mememe = getpwnam(cfg->runuser);
-    if(mememe != NULL) {
-        setreuid(mememe->pw_uid, mememe->pw_uid);
-        setregid(mememe->pw_gid, mememe->pw_gid);
-    } else {
-        syslog(LOG_ERR, "running as root! please configure a user.\n");
-    }
-
     /* forking */
     if(cfg->daemon) {
         rc = fork();
@@ -772,6 +767,21 @@ int main(int argc, char *argv[])
         openlog("at_agent", LOG_CONS|LOG_PERROR, LOG_USER);
         syslog(LOG_DEBUG, "running in foreground");
     }
+
+    mypid = getpid();
+    pidf = fopen(AGENT_PID_FILE, "w");
+    fprintf(pidf, "%u", mypid);
+    fclose(pidf);
+
+    /* Set user */
+    mememe = getpwnam(cfg->runuser);
+    if(mememe != NULL) {
+        setreuid(mememe->pw_uid, mememe->pw_uid);
+        setregid(mememe->pw_gid, mememe->pw_gid);
+    } else {
+        syslog(LOG_ERR, "running as root! please configure a user.\n");
+    }
+
     /* Set the log mask */
 	rc = 0;
 	switch(cfg->log_level) {

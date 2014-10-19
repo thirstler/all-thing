@@ -15,6 +15,7 @@
 /* Default configuration values */
 #define DEFAULT_CONFIG "/etc/allthing.conf"
 #define DEFAULT_AG_POLL_RATE 5000000
+#define DEFAULT_DB_COMMIT_RATE 15
 #define DEFAULT_CPU_MULT 1
 #define DEFAULT_IFACE_MULT 1
 #define DEFAULT_IODEV_MULT 1
@@ -26,6 +27,8 @@
 #define DEFAULT_LOG_LEVEL 4
 
 #define DEFAULT_MASTER_MON_RATE 5000000
+#define AGENT_PID_FILE "/var/run/at_agent.pid"
+#define MASTER_PID_FILE "/var/run/at_master.pid"
 #define AGENT_PROFILE_DIR "/var/db/allthing"
 #define AGENT_HOSTID_FILE "host_id"
 #define RANDOM_DEVICE "/dev/random" /* not for crypto, so fine */
@@ -44,6 +47,11 @@
 #define MASTER_ASMBL_BUF_AGE 15
 #define ASMBL_BUF_PRUNE_COUNT 500
 #define DATA_STRUCT_AR_SIZE 65536
+#define MAX_DB_QUEUE_LEN 16384
+#define DB_QUEUE_SLEEP 10000000
+
+#define DB_AGENT_CACHE_UPDATE_QUEUE 0
+#define DB_AGENT_TS_UPDATE_QUEUE 1
 
 /* poll flags */
 #define POLL_CPU         0x00000001
@@ -286,6 +294,7 @@ typedef struct master_config_s {
     char daemon;
     int rprt_hndlrs;
     int log_level;
+    time_t def_commit_rate;
 
     /* database info cleared after connection established */
     char *db_host;
@@ -317,12 +326,21 @@ typedef struct rprt_hdr_s {
 
 typedef struct obj_rec_s {
 	uint64_t id;
+	time_t commit_rate;
+	time_t last_commit;
 	json_t *record;
 } obj_rec_t;
+
+
+typedef struct data_op {
+	int type;
+	void *record;
+} data_op_t;
 
 typedef struct master_global_data_s {
 	obj_rec_t **obj_rec;
     size_t obj_rec_sz;
+    data_op_t data_ops_queue[16384];
 } master_global_data_t;
 
 /* Global statistics */

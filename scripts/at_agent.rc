@@ -1,0 +1,99 @@
+#!/bin/sh
+#
+# at_agent         Control the All-Thing Agent
+#
+# description: Control the all-thing agent process 
+# processname: at_agent
+# config: /etc/allthing.conf
+# pidfile: /var/run/at_agent.pid
+
+# chkconfig: 2345 60 20
+# Provides: at_agent
+# Required-Start: $local_fs $network $syslog
+# Required-Stop: $local_fs $syslog
+# Should-Start: $syslog
+# Should-Stop: $network $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Control the all-thing agent process
+# Description:       All thing agent reports to a running master process in
+#                    the running infrastructure. Daemon reports system 
+#                    performance data.
+
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+prog="at_agent"
+lockfile=/var/lock/subsys/$prog
+
+AT_AGENT=/usr/sbin/at_agent
+PID_FILE=/var/run/at_agent.pid
+CONFIG_FILE=/etc/allthing.conf
+OPTIONS=
+
+runlevel=$(set -- $(runlevel); eval "echo \$$#" )
+
+start()
+{
+        [ -x $AT_AGENT ] || exit 5
+        [ -f $CONFIG_FILE ] || exit 6
+
+        echo -n $"Starting $prog: "
+        $AT_AGENT $OPTIONS && success || failure
+        RETVAL=$?
+        [ $RETVAL -eq 0 ] && touch $lockfile
+        echo
+        return $RETVAL
+}
+
+stop()
+{
+        echo -n $"Stopping $prog: "
+        killproc -p $PID_FILE $AT_AGENT
+        RETVAL=$?
+        [ $RETVAL -eq 0 ] && rm -f $lockfile
+        echo
+}
+
+restart() {
+        stop
+        start
+}
+
+rh_status() {
+        status -p $PID_FILE at_agent
+}
+
+rh_status_q() {
+        rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+        start)
+                rh_status_q && exit 0
+                start
+                ;;
+        stop)
+                if ! rh_status_q; then
+                        rm -f $lockfile
+                        exit 0
+                fi
+                stop
+                ;;
+        restart)
+                restart
+                ;;
+        status)
+                rh_status
+                RETVAL=$?
+                if [ $RETVAL -eq 3 -a -f $lockfile ] ; then
+                        RETVAL=2
+                fi
+                ;;
+        *)
+                echo $"Usage: $0 {start|stop|restart|status}"
+                RETVAL=2
+esac
+exit $RETVAL

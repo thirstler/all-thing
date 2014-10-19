@@ -20,6 +20,10 @@
 
 char on;
 master_config_t *cfg;
+PGconn *pgconn;
+
+/* Multiple threads need to write to the db ops queue */
+pthread_mutex_t db_queue_ops_mtx;
 
 static int config_handler(
         void* user,
@@ -56,25 +60,28 @@ static int config_handler(
             	cfg->log_level = DEFAULT_LOG_LEVEL;
             }
         }
+        if(strcmp(name, "default_commit_rate") == 0)
+            cfg->rprt_hndlrs = atoi(value);
     }
 
     /* This info is only held until the db connection is established */
     if(strcmp(section, "database") == 0) {
-		if(strcmp(name, "hostname") == 0)	cfg->db_host = strdup(value);
-		if(strcmp(name, "port") == 0) 		cfg->db_port = strdup(value);
-		if(strcmp(name, "username") == 0) 		cfg->db_user = strdup(value);
-		if(strcmp(name, "password") == 0)	cfg->db_pw = strdup(value);
-		if(strcmp(name, "database") == 0)	cfg->db_db = strdup(value);
+		if(strcmp(name, "hostname") == 0)   cfg->db_host = strdup(value);
+		if(strcmp(name, "port") == 0)       cfg->db_port = strdup(value);
+		if(strcmp(name, "username") == 0)   cfg->db_user = strdup(value);
+		if(strcmp(name, "password") == 0)   cfg->db_pw = strdup(value);
+		if(strcmp(name, "database") == 0)   cfg->db_db = strdup(value);
 	}
     return 1;
 }
 
 /*
- * Set defaults values defined in at.h
+ * Set default values defined in at.h
  */
 static void set_cfg_defaults(master_config_t* cfg)
 {
     cfg->mon_rate = DEFAULT_MASTER_MON_RATE;
+    cfg->def_commit_rate = DEFAULT_DB_COMMIT_RATE;
     strcpy(cfg->runuser, DEFAULT_RUNUSER);
     strcpy(cfg->config_file, DEFAULT_CONFIG);
     strcpy(cfg->server_port, DEFAULT_SERVER_PORT);
@@ -87,6 +94,16 @@ static void quitit(int signal)
 {
     printf("exit requested\n");
     on = 0;
+}
+
+static void clear_config()
+{
+	if(cfg->listen_addr != NULL) free(cfg->listen_addr);
+	if(cfg->server_addr != NULL) free(cfg->server_addr);
+	if(cfg->db_db != NULL) free(cfg->db_db);
+	if(cfg->db_host != NULL) free(cfg->db_host);
+	if(cfg->db_port != NULL) free(cfg->db_port);
+    free(cfg);
 }
 
 static void reinit(int signal)
@@ -109,7 +126,7 @@ static void clear_data_master(master_global_data_t *data_master)
 /*
  * This opens a connection to the data server.
  */
-static int netsock()
+static int netsock(int proto, char *port, char *listen)
 {
     struct addrinfo hints;
     struct addrinfo *res;
@@ -117,18 +134,22 @@ static int netsock()
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_DGRAM;
+    //hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_socktype = proto;
     hints.ai_flags = AI_PASSIVE;
 
-    int rc = getaddrinfo("localhost", cfg->listen_port, &hints, &res);
+    //int rc = getaddrinfo(cfg->listen_addr, cfg->listen_port, &hints, &res);
+    int rc = getaddrinfo(listen, port, &hints, &res);
     if(rc != 0) return 0;
 
     rsock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
-    /* All UDP but I want rsock to be a standing descriptor */
     connect(rsock, res->ai_addr, res->ai_addrlen);
 
     free(res);
+    free(hints.ai_addr);
+    free(hints.ai_canonname);
+    free(hints.ai_next);
 
     return rsock;
 }
@@ -141,10 +162,15 @@ int main(int argc, char *argv[])
     struct passwd *mememe;
     pthread_t node_listen;
     pthread_t data_server;
+    pthread_t database_ops;
+    int db_retry_sec = RETRY_DB_CONN_SEC;
+    time_t loop_time, last_db_con_atempt = 0;
+
     master_global_data_t *data_master;
     openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
-    int selfie;
-	PGconn *pgconn;
+    int listen_selfie, server_selfie;
+    FILE *pidf;
+    pid_t mypid;
 
     /* Allocate config object and set defaults */
     cfg = malloc(sizeof(master_config_t));
@@ -195,15 +221,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    /* Set user */
-    mememe = getpwnam(cfg->runuser);
-    if(mememe != NULL) {
-        setreuid(mememe->pw_uid, mememe->pw_uid);
-        setregid(mememe->pw_gid, mememe->pw_gid);
-    } else {
-        syslog(LOG_ERR, "running as root (YUCK!), please configure a user");
-    }
-
     /* forking */
     if(cfg->daemon) {
         rc = fork();
@@ -215,6 +232,20 @@ int main(int argc, char *argv[])
         openlog("at_master", LOG_CONS, LOG_USER);
     } else {
         openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
+    }
+
+    mypid = getpid();
+    pidf = fopen(MASTER_PID_FILE, "w");
+    fprintf(pidf, "%u", mypid);
+    fclose(pidf);
+
+    /* Set user */
+    mememe = getpwnam(cfg->runuser);
+    if(mememe != NULL) {
+        setreuid(mememe->pw_uid, mememe->pw_uid);
+        setregid(mememe->pw_gid, mememe->pw_gid);
+    } else {
+        syslog(LOG_ERR, "running as root (YUCK!), please configure a user");
     }
 
     /* Set the log mask */
@@ -245,37 +276,71 @@ int main(int argc, char *argv[])
     data_master->obj_rec = NULL;
     data_master->obj_rec_sz = 0;
 
+    /* initialize database ops queue */
+    memset(data_master->data_ops_queue, '\0', (sizeof(data_op_t)*MAX_DB_QUEUE_LEN));
+
     /* Connect to database */
     pgconn = db_connect(cfg);
-    mk_cache_tbl(pgconn);
 
-    /* Spin-off node listener thread */
+    if(PQstatus(pgconn) != CONNECTION_OK) {
+    	syslog(LOG_ERR, "failed to connect to database but I'll keep going...");
+    }
+
+    /* Clean-up in case of unclean shutdown */
+    drop_agent_cache();
+
+    /* Create agent cache table */
+    mk_cache_tbl();
+
+    /* Spin-off threads */
     rc = pthread_create(
             &node_listen, NULL, report_listener, (void*) data_master);
     rc = pthread_create(
             &data_server, NULL, server_listener, (void*) data_master);
+    rc = pthread_create(
+            &database_ops, NULL, database_ops_queue, (void*) data_master);
 
-    /* Get a socket ready to self trigger */
-    selfie = netsock();
+    pthread_mutex_init(&db_queue_ops_mtx, NULL);
+
+    /* Get sockets ready to self trigger the looping threads */
+    listen_selfie = netsock(SOCK_DGRAM, cfg->listen_port, cfg->listen_addr);
+    server_selfie = netsock(SOCK_STREAM, cfg->server_port, cfg->server_addr);
 
     /* Main (monitor) loop */
     for(mon_count=0; on; mon_count +=1) {
         usleep(cfg->mon_rate);
+        loop_time = time(NULL);
 
-        snap_rec_tbls(data_master, pgconn);
+        /* Send a packet to self, keeps the listener loops moving */
+        send(listen_selfie, "MARK", 4, 0);
+        send(server_selfie, "MARK\n", 5, 0);
 
-        /* Send a packet to self, keeps the listener loop moving */
-        send(selfie, "MARK", 4, 0);
+        /* retry database connection if necessary */
+        if(PQstatus(pgconn) != CONNECTION_OK && ((loop_time - last_db_con_atempt) > db_retry_sec) )
+        {
+        	pgconn = db_connect(cfg);
+        	if(PQstatus(pgconn) == CONNECTION_OK) {
+        		syslog(LOG_INFO, "successfully connected to database");
+			} else {
+				syslog(LOG_DEBUG, "failed to reconnect to database");
+			}
+        	last_db_con_atempt = loop_time;
+        }
     }
 
-    syslog(LOG_CRIT, "main thread exited");
+    /* Clean up db agent cache */
+    drop_agent_cache();
 
     pthread_join(node_listen, NULL);
+    pthread_join(data_server, NULL);
+    pthread_join(database_ops, NULL);
+    pthread_mutex_destroy(&db_queue_ops_mtx);
 
+    PQfinish(pgconn);
     clear_data_master(data_master);
+    clear_config();
 
-    free(cfg);
-
+    syslog(LOG_CRIT, "main thread exited");
     syslog(LOG_CRIT, "stick a fork in me, I'm done");
 
     return EXIT_SUCCESS;
