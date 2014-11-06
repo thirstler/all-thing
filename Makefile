@@ -3,45 +3,14 @@ CFLAGS:=-g -m64 -Wall -O1
 LDFLAGS:=-g -lm -ljansson -lpthread
 DESTDIR:=
 MASTER_LDFLAGS:=${LDFLAGS} -lpq
-AGENT_LDFLAGS:=${LDFLAGS}
 
 all: at_agent at_master 
 
-at_master: mstr_dataops.o mstr_listener.o at_master.o ini.o mstr_datasrv.o at_db.o
-	${CC} ${MASTER_LDFLAGS} mstr_datasrv.o mstr_dataops.o mstr_listener.o at_master.o ini.o at_db.o -o at_master
+at_agent: agent/Makefile ini.o
+	cd agent && make
 
-at_agent: ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o
-	${CC} ${AGENT_LDFLAGS} ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o -o at_agent
-
-at_db.o: at.h at_db.h at_db.c
-	${CC} ${MASTER_LDFLAGS} -o at_db.o -c at_db.c
-	
-mstr_dataops.o: mstr_dataops.c at.h
-	${CC} ${CFLAGS} -o mstr_dataops.o -c mstr_dataops.c
-	
-mstr_listener.o: mstr_listener.c at.h
-	${CC} ${CFLAGS} -o mstr_listener.o -c mstr_listener.c
-
-mstr_datasrv.o: mstr_datasrv.c at.h
-	${CC} ${CFLAGS} -o mstr_datasrv.o -c mstr_datasrv.c
-
-at_master.o: at_master.c at.h
-	${CC} ${CFLAGS} -o at_master.o -c at_master.c
-
-at_agent.o: at_agent.c at.h
-	${CC} ${CFLAGS} -o at_agent.o -c at_agent.c
-
-fsops.o: fsops.c at.h
-	${CC} ${CFLAGS} -o fsops.o -c fsops.c
-	
-cpuops.o: cpuops.c at.h
-	${CC} ${CFLAGS} -o cpuops.o -c cpuops.c
-
-iodevops.o: iodevops.c at.h
-	${CC} ${CFLAGS} -o iodevops.o -c iodevops.c
-
-ifaceops.o: ifaceops.c at.h
-	${CC} ${CFLAGS} -o ifaceops.o -c ifaceops.c
+at_master: master/Makefile ini.o
+	cd master && make
 
 ini.o: ini.c ini.h
 	${CC} ${CFLAGS} -o ini.o -c ini.c
@@ -52,7 +21,7 @@ install-agent: at_agent
 	[ -d /usr/sbin ] || mkdir /usr/sbin
 	[ -d /etc ] || mkdir /etc
 	/usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin allthing
-	install -s -groot -oallthing -m0700 ./at_agent ${DESTDIR}/usr/sbin/at_agent
+	install -s -groot -oallthing -m0700 .agent/at_agent ${DESTDIR}/usr/sbin/at_agent
 	[ -f ${DESTDIR}/etc/allthing.conf ] || install -groot -oroot -m0640 ./config/allthing.conf ${DESTDIR}/etc/allthing.conf
 	install -groot -oallthing -m755 ./scripts/at_agent.rc /etc/init.d/at_agent
 	chkconfig --add /etc/init.d/at_agent
@@ -61,7 +30,7 @@ install-master: at_master
 	[ -d /usr/sbin ] || mkdir /usr/sbin
 	[ -d /etc ] || mkdir /etc
 	/usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin allthing
-	install -s -groot -oallthing -m0700 ./at_master ${DESTDIR}/usr/sbin/at_master
+	install -s -groot -oallthing -m0700 ./master/at_master ${DESTDIR}/usr/sbin/at_master
 	[ -f ${DESTDIR}/etc/allthing.conf ] || install -groot -oroot -m0640 ./config/allthing.conf ${DESTDIR}/etc/allthing.conf
 	install -groot -oallthing -m755 ./scripts/at_master.rc /etc/init.d/at_master
 	chkconfig --add /etc/init.d/at_master
@@ -69,12 +38,24 @@ install-master: at_master
 
 
 # For creating tarballs for SRPM generation, increment with SPEC file
-VER=0.7
+VER=0.8.1
+
+srcrpms: at_agent-tar at_master-tar
+	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_agent.spec
+	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_master.spec
+	cp -f rpmspec/at_agent.spec ~/rpmbuild/SPECS
+	cp -f rpmspec/at_master.spec ~/rpmbuild/SPECS
+	cp -f all-thing-agent-${VER}.tar.gz ~/rpmbuild/SOURCES
+	cp -f all-thing-master-${VER}.tar.gz ~/rpmbuild/SOURCES
+	cd ~/rpmbuild
+	rpmbuild -bs rpmspec/at_agent.spec
+	rpmbuild -bs rpmspec/at_master.spec
+	
 
 at_agent-tar:
 	mkdir -p ./all-thing-agent-${VER}/config
 	mkdir -p ./all-thing-agent-${VER}/scripts
-	cp -a *.c *.h Makefile ./all-thing-agent-${VER}/
+	cp -a agent *.c *.h Makefile ./all-thing-agent-${VER}/
 	cp -a config/allthing.conf ./all-thing-agent-${VER}/config/
 	cp -a scripts/at_agent.rc ./all-thing-agent-${VER}/scripts/
 	tar -czf all-thing-agent-${VER}.tar.gz all-thing-agent-${VER}
@@ -83,12 +64,14 @@ at_agent-tar:
 at_master-tar:
 	mkdir -p ./all-thing-master-${VER}/config
 	mkdir -p ./all-thing-master-${VER}/scripts
-	cp -a *.c *.h Makefile ./all-thing-master-${VER}/
+	cp -a master *.c *.h Makefile ./all-thing-master-${VER}/
 	cp -a config/allthing.conf ./all-thing-master-${VER}/config/
 	cp -a scripts/at_master.rc ./all-thing-master-${VER}/scripts/
 	tar -czf all-thing-master-${VER}.tar.gz all-thing-master-${VER}
 	rm -rf ./all-thing-master-${VER}
 		
 clean:
+	cd agent && make clean
+	cd master && make clean
 	rm -f *.o at_agent at_master *.tar *.tar.gz core.*
 	
