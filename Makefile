@@ -21,7 +21,7 @@ install-agent: at_agent
 	[ -d /usr/sbin ] || mkdir /usr/sbin
 	[ -d /etc ] || mkdir /etc
 	/usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin allthing
-	install -s -groot -oallthing -m0700 .agent/at_agent ${DESTDIR}/usr/sbin/at_agent
+	install -s -groot -oallthing -m0700 ./agent/at_agent ${DESTDIR}/usr/sbin/at_agent
 	[ -f ${DESTDIR}/etc/allthing.conf ] || install -groot -oroot -m0640 ./config/allthing.conf ${DESTDIR}/etc/allthing.conf
 	install -groot -oallthing -m755 ./scripts/at_agent.rc /etc/init.d/at_agent
 	chkconfig --add /etc/init.d/at_agent
@@ -38,7 +38,7 @@ install-master: at_master
 
 
 # For creating tarballs for SRPM generation, increment with SPEC file
-VER=0.8.1
+VER=0.8.3
 
 srcrpms: at_agent-tar at_master-tar
 	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_agent.spec

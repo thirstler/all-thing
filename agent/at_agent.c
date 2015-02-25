@@ -118,7 +118,7 @@ static void init_hostdata(sysinf_t *host_data)
 
 }
 
-static inline void *get_mem_val(const char *key, memval_t* val, const char *strptr)
+static inline const char* get_mem_val(const char *key, memval_t* val, const char *strptr)
 {
 	const char *ring = strptr;
 	ring = strstr(ring, key);

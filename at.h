@@ -118,7 +118,7 @@ typedef struct ext_meminf_s {
 	memval_t Active_anon;
 	memval_t Inactive_anon;
 	memval_t Active_file;
-	memval_t Inactive_anon;
+	memval_t Inactive_file;
 	memval_t Unevictable;
 	memval_t Mlocked;
 	memval_t SwapTotal;
