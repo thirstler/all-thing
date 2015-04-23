@@ -13,7 +13,11 @@
 #include <syslog.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#ifdef USE_CJSON
+#include "../cJSON.h"
+#else
 #include <jansson.h>
+#endif
 #include "../ini.h"
 #include "../at.h"
 #include "at_agent.h"
@@ -115,7 +119,6 @@ static void init_hostdata(sysinf_t *host_data)
     set_data_hostname(host_data);
 
     hostid = 0;
-
 }
 
 static inline const char* get_mem_val(const char *key, memval_t* val, const char *strptr)
@@ -129,11 +132,6 @@ static inline const char* get_mem_val(const char *key, memval_t* val, const char
 	return ring;
 }
 
-static inline void poll_extended_mem(sysinf_t *host_data)
-{
-
-}
-
 static inline void poll_mem(sysinf_t *host_data)
 {
     FILE *fh = fopen("/proc/meminfo", "r");
@@ -143,18 +141,51 @@ static inline void poll_mem(sysinf_t *host_data)
     fread(meminfbuf, PROC_MEMINF_BUFFER, 1, fh);
     fclose(fh);
 
-    fp = strstr(meminfbuf, "MemTotal:");
-    sscanf(fp, "MemTotal: %lu", &host_data->mem_total);
-    fp = strstr(fp, "MemFree:");
-    sscanf(fp, "MemFree: %lu", &host_data->mem_free);
-    fp = strstr(fp, "Buffers:");
-    sscanf(fp, "Buffers: %lu", &host_data->mem_buffers);
-    fp = strstr(fp, "Cached:");
-    sscanf(fp, "Cached: %lu", &host_data->mem_cache);
-    fp = strstr(fp, "SwapTotal:");
-    sscanf(fp, "SwapTotal: %lu", &host_data->swap_total);
-    fp = strstr(fp, "SwapFree:");
-    sscanf(fp, "SwapFree: %lu", &host_data->swap_free);
+    sscanf(fp = strstr(meminfbuf, "MemTotal:"), "MemTotal: %lu", &host_data->mem.MemTotal);
+    sscanf(fp = strstr(meminfbuf, "MemFree:"), "MemFree: %lu", &host_data->mem.MemFree);
+    sscanf(fp = strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
+    sscanf(fp = strstr(meminfbuf, "Buffers:"), "Buffers: %lu", &host_data->mem.Buffers);
+    sscanf(fp = strstr(meminfbuf, "Cached:"), "Cached: %lu", &host_data->mem.Cached);
+    sscanf(fp = strstr(meminfbuf, "SwapCached:"), "SwapCached: %lu", &host_data->mem.SwapCached);
+    sscanf(fp = strstr(meminfbuf, "Active:"), "Active: %lu", &host_data->mem.Active);
+    sscanf(fp = strstr(meminfbuf, "Inactive:"), "Inactive: %lu", &host_data->mem.Inactive);
+    sscanf(fp = strstr(meminfbuf, "Active(anon):"), "Active(anon): %lu", &host_data->mem.Active_anon_);
+    sscanf(fp = strstr(meminfbuf, "Inactive(anon):"), "Inactive(anon): %lu", &host_data->mem.Inactive_anon_);
+    sscanf(fp = strstr(meminfbuf, "Active(file):"), "Active(file): %lu", &host_data->mem.Active_file_);
+    sscanf(fp = strstr(meminfbuf, "Inactive(file):"), "Inactive(file): %lu", &host_data->mem.Inactive_file_);
+    sscanf(fp = strstr(meminfbuf, "Unevictable:"), "Unevictable: %lu", &host_data->mem.Unevictable);
+    sscanf(fp = strstr(meminfbuf, "Mlocked:"), "Mlocked: %lu", &host_data->mem.Mlocked);
+    sscanf(fp = strstr(meminfbuf, "SwapTotal:"), "SwapTotal: %lu", &host_data->mem.SwapTotal);
+    sscanf(fp = strstr(meminfbuf, "SwapFree:"), "SwapFree: %lu", &host_data->mem.SwapFree);
+    sscanf(fp = strstr(meminfbuf, "Dirty:"), "Dirty: %lu", &host_data->mem.Dirty);
+    sscanf(fp = strstr(meminfbuf, "Writeback:"), "Writeback: %lu", &host_data->mem.Writeback);
+    sscanf(fp = strstr(meminfbuf, "AnonPages:"), "AnonPages: %lu", &host_data->mem.AnonPages);
+    sscanf(fp = strstr(meminfbuf, "Mapped:"), "Mapped: %lu", &host_data->mem.Mapped);
+    sscanf(fp = strstr(meminfbuf, "Shmem:"), "Shmem: %lu", &host_data->mem.Shmem);
+    sscanf(fp = strstr(meminfbuf, "Shmem:"), "Shmem: %lu", &host_data->mem.Shmem);
+    sscanf(fp = strstr(meminfbuf, "Slab:"), "Slab: %lu", &host_data->mem.Slab);
+    sscanf(fp = strstr(meminfbuf, "SReclaimable:"), "SReclaimable: %lu", &host_data->mem.SReclaimable);
+    sscanf(fp = strstr(meminfbuf, "SUnreclaim:"), "SUnreclaim: %lu", &host_data->mem.SUnreclaim);
+    sscanf(fp = strstr(meminfbuf, "KernelStack:"), "KernelStack: %lu", &host_data->mem.KernelStack);
+    sscanf(fp = strstr(meminfbuf, "PageTables:"), "PageTables: %lu", &host_data->mem.PageTables);
+    sscanf(fp = strstr(meminfbuf, "NFS_Unstable:"), "NFS_Unstable: %lu", &host_data->mem.NFS_Unstable);
+    sscanf(fp = strstr(meminfbuf, "Bounce:"), "Bounce: %lu", &host_data->mem.Bounce);
+    sscanf(fp = strstr(meminfbuf, "WritebackTmp:"), "WritebackTmp: %lu", &host_data->mem.WritebackTmp);
+    sscanf(fp = strstr(meminfbuf, "CommitLimit:"), "CommitLimit: %lu", &host_data->mem.CommitLimit);
+    sscanf(fp = strstr(meminfbuf, "Committed_AS:"), "Committed_AS: %lu", &host_data->mem.Committed_AS);
+    sscanf(fp = strstr(meminfbuf, "VmallocTotal:"), "VmallocTotal: %lu", &host_data->mem.VmallocTotal);
+    sscanf(fp = strstr(meminfbuf, "VmallocUsed:"), "VmallocUsed: %lu", &host_data->mem.VmallocUsed);
+    sscanf(fp = strstr(meminfbuf, "VmallocChunk:"), "VmallocChunk: %lu", &host_data->mem.VmallocChunk);
+    sscanf(fp = strstr(meminfbuf, "HardwareCorrupted:"), "HardwareCorrupted: %lu", &host_data->mem.HardwareCorrupted);
+    sscanf(fp = strstr(meminfbuf, "AnonHugePages:"), "AnonHugePages: %lu", &host_data->mem.AnonHugePages);
+    sscanf(fp = strstr(meminfbuf, "HugePages_Total:"), "HugePages_Total: %lu", &host_data->mem.HugePages_Total);
+    sscanf(fp = strstr(meminfbuf, "HugePages_Free:"), "HugePages_Free: %lu", &host_data->mem.HugePages_Free);
+    sscanf(fp = strstr(meminfbuf, "HugePages_Rsvd:"), "HugePages_Rsvd: %lu", &host_data->mem.HugePages_Rsvd);
+    sscanf(fp = strstr(meminfbuf, "HugePages_Surp:"), "HugePages_Surp: %lu", &host_data->mem.HugePages_Surp);
+    sscanf(fp = strstr(meminfbuf, "Hugepagesize:"), "Hugepagesize: %lu", &host_data->mem.Hugepagesize);
+    sscanf(fp = strstr(meminfbuf, "DirectMap4k:"), "DirectMap4k: %lu", &host_data->mem.DirectMap4k);
+    sscanf(fp = strstr(meminfbuf, "DirectMap2M:"), "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
+    sscanf(fp = strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu", &host_data->mem.DirectMap1G);
 }
 
 static inline void poll_uptime(sysinf_t *host_data)
@@ -251,6 +282,238 @@ inline int get_poll_bits(int count, agent_config_t *cfg)
     return sw;
 }
 
+#ifdef USE_CJSON
+static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw)
+{
+    fsinf_t *fsptr;
+    iface_inf_t *ifaceptr;
+    iodev_inf_t *iodevptr;
+    cpu_inf_t *cpuptr;
+    char *endgame;
+    cJSON *devptr;
+    
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "hostid", hexid);
+    
+    cJSON *misc = cJSON_CreateObject();
+    cJSON_AddStringToObject(misc, "hostname", host_data->hostname);
+    if(pollsw & POLL_UPTIME) {
+        cJSON_AddNumberToObject(misc, "uptime", host_data->uptime);
+        cJSON_AddNumberToObject(misc, "idletime", host_data->idletime);
+        cJSON_AddItemToObject(root, "misc", misc);
+    }
+    
+    cJSON *ts = cJSON_CreateObject();
+    cJSON_AddNumberToObject(ts, "tv_sec", host_data->sample_tv.tv_sec);
+    cJSON_AddNumberToObject(ts, "tv_usec", host_data->sample_tv.tv_usec);
+    cJSON_AddItemToObject(root, "ts", ts);
+    
+
+    if(pollsw & RPRT_METADATA) {
+    	cJSON *meta = cJSON_CreateObject();
+        cJSON_AddStringToObject(meta, "location", cfg->location);
+        cJSON_AddStringToObject(meta, "contact", cfg->contact);
+        cJSON_AddStringToObject(meta, "group", cfg->group);
+        cJSON_AddItemToObject(root, "meta", meta);
+    }
+    
+    if(pollsw & POLL_FS) {
+        
+        cJSON *fsdevs = cJSON_CreateArray();
+        
+        fsptr = host_data->fsinf;
+        while(fsptr != NULL) {
+
+        	/* Mow this over every iteration */
+        	devptr =  cJSON_CreateObject();
+            cJSON_AddStringToObject(devptr, "dev", fsptr->dev);
+            cJSON_AddStringToObject(devptr, "mountpoint", fsptr->mountpoint);
+            cJSON_AddStringToObject(devptr, "fstype", fsptr->fstype);
+            cJSON_AddNumberToObject(devptr, "fstype", fsptr->blks_total);
+            cJSON_AddNumberToObject(devptr, "blks_free", fsptr->blks_free);
+            cJSON_AddNumberToObject(devptr, "blks_avail", fsptr->blks_avail);
+            cJSON_AddNumberToObject(devptr, "block_size", fsptr->block_size);
+            cJSON_AddNumberToObject(devptr, "inodes_ttl", fsptr->inodes_ttl);
+            cJSON_AddNumberToObject(devptr, "inodes_free", fsptr->inodes_free);
+            cJSON_AddItemToArray(fsdevs, devptr);
+            fsptr = fsptr->next;
+
+        }
+        cJSON_AddItemToObject(root, "fs", fsdevs);
+    }
+
+    if(pollsw & POLL_IFACE) {
+
+    	cJSON *ifdevs = cJSON_CreateArray();
+
+    	ifaceptr = host_data->iface;
+    	while(ifaceptr != NULL) {
+    		/* We don't need inactive devices */
+			if(ifaceptr->rx_packets+ifaceptr->tx_packets == 0) {
+				ifaceptr = ifaceptr->next;
+				continue;
+			}
+
+			/* Mow this over every iteration */
+			devptr =  cJSON_CreateObject();
+
+			cJSON_AddStringToObject(devptr, "dev", ifaceptr->dev);
+			cJSON_AddNumberToObject(devptr, "c|rx_packets", ifaceptr->rx_packets);
+			cJSON_AddNumberToObject(devptr, "c|rx_bytes", ifaceptr->rx_bytes);
+			cJSON_AddNumberToObject(devptr, "c|rx_errs", ifaceptr->rx_errs);
+			cJSON_AddNumberToObject(devptr, "c|rx_drop", ifaceptr->rx_drop);
+			cJSON_AddNumberToObject(devptr, "c|rx_fifo", ifaceptr->rx_fifo);
+			cJSON_AddNumberToObject(devptr, "c|rx_frame", ifaceptr->rx_frame);
+			cJSON_AddNumberToObject(devptr, "c|rx_comp", ifaceptr->rx_comp);
+			cJSON_AddNumberToObject(devptr, "c|rx_multi", ifaceptr->rx_multi);
+			cJSON_AddNumberToObject(devptr, "c|tx_packets", ifaceptr->tx_packets);
+			cJSON_AddNumberToObject(devptr, "c|tx_bytes", ifaceptr->tx_bytes);
+			cJSON_AddNumberToObject(devptr, "c|tx_errs", ifaceptr->tx_errs);
+			cJSON_AddNumberToObject(devptr, "c|tx_drop", ifaceptr->tx_drop);
+			cJSON_AddNumberToObject(devptr, "c|c|tx_fifo", ifaceptr->tx_fifo);
+			cJSON_AddNumberToObject(devptr, "c|tx_colls", ifaceptr->tx_colls);
+			cJSON_AddNumberToObject(devptr, "c|tx_carr", ifaceptr->tx_carr);
+			cJSON_AddNumberToObject(devptr, "c|tx_comp", ifaceptr->tx_comp);
+			cJSON_AddItemToArray(ifdevs, devptr);
+
+			ifaceptr = ifaceptr->next;
+    	}
+    	cJSON_AddItemToObject(root, "iface", ifdevs);
+    }
+
+    if(pollsw & POLL_IODEV) {
+
+    	cJSON *iodevs = cJSON_CreateArray();
+
+    	iodevptr = host_data->iodev;
+    	while(iodevptr != NULL) {
+    		/* We don't need inactive devices */
+			if(iodevptr->reads+iodevptr->writes == 0) {
+				iodevptr = iodevptr->next;
+				continue;
+			}
+
+			/* Mow this over every iteration */
+			devptr =  cJSON_CreateObject();
+
+			cJSON_AddStringToObject(devptr, "dev", iodevptr->dev);
+			cJSON_AddNumberToObject(devptr, "c|reads", iodevptr->reads);
+			cJSON_AddNumberToObject(devptr, "c|read_sectors", iodevptr->read_sectors);
+			cJSON_AddNumberToObject(devptr, "c|reads_merged", iodevptr->reads_merged);
+			cJSON_AddNumberToObject(devptr, "c|msec_reading", iodevptr->msec_reading);
+			cJSON_AddNumberToObject(devptr, "c|writes", iodevptr->writes);
+			cJSON_AddNumberToObject(devptr, "c|write_sectors", iodevptr->write_sectors);
+			cJSON_AddNumberToObject(devptr, "c|writes_merged", iodevptr->writes_merged);
+			cJSON_AddNumberToObject(devptr, "c|msec_writing", iodevptr->msec_writing);
+			cJSON_AddNumberToObject(devptr, "current_ios", iodevptr->current_ios);
+			cJSON_AddNumberToObject(devptr, "c|msec_ios", iodevptr->msec_ios);
+			cJSON_AddNumberToObject(devptr, "c|weighted_ios", iodevptr->weighted_ios);
+			cJSON_AddItemToArray(iodevs, devptr);
+
+			iodevptr = iodevptr->next;
+    	}
+    	cJSON_AddItemToObject(root, "iodev", iodevs);
+    }
+
+    if(pollsw & POLL_LOAD) {
+    	cJSON *load = cJSON_CreateObject();
+    	cJSON_AddNumberToObject(load, "1min", host_data->load_1);
+    	cJSON_AddNumberToObject(load, "5min", host_data->load_5);
+    	cJSON_AddNumberToObject(load, "15min", host_data->load_15);
+    	cJSON_AddNumberToObject(load, "procs_run", host_data->procs_running);
+    	cJSON_AddNumberToObject(load, "procs_total", host_data->procs_total);
+    	cJSON_AddItemToObject(root, "sysload", load);
+    }
+
+    if(pollsw & POLL_CPU) {
+
+    	cJSON *cputtls = cJSON_CreateObject();
+    	cJSON_AddNumberToObject(cputtls, "c|user", host_data->cpu_user);
+    	cJSON_AddNumberToObject(cputtls, "c|nice", host_data->cpu_nice);
+    	cJSON_AddNumberToObject(cputtls, "c|system", host_data->cpu_system);
+    	cJSON_AddNumberToObject(cputtls, "c|idle", host_data->cpu_idle);
+    	cJSON_AddNumberToObject(cputtls, "c|iowait", host_data->cpu_iowait);
+    	cJSON_AddNumberToObject(cputtls, "c|irq", host_data->cpu_irq);
+    	cJSON_AddNumberToObject(cputtls, "c|s_irq", host_data->cpu_sirq);
+    	cJSON_AddNumberToObject(cputtls, "c|steal", host_data->cpu_steal);
+    	cJSON_AddNumberToObject(cputtls, "c|guest", host_data->cpu_guest);
+    	cJSON_AddNumberToObject(cputtls, "c|n_guest", host_data->cpu_guest_nice);
+    	cJSON_AddNumberToObject(cputtls, "c|intrps", host_data->interrupts);
+    	cJSON_AddNumberToObject(cputtls, "c|s_intrps", host_data->s_interrupts);
+    	cJSON_AddNumberToObject(cputtls, "c|ctxt", host_data->context_switches);
+    	cJSON_AddItemToObject(root, "cpu_ttls", cputtls);
+
+    	cJSON *cpus = cJSON_CreateArray();
+    	cpuptr = host_data->cpu;
+		while(cpuptr != NULL) {
+
+			/* Mow this over every iteration */
+			devptr =  cJSON_CreateObject();
+
+			cJSON_AddNumberToObject(devptr, "cpu", cpuptr->cpu);
+			cJSON_AddNumberToObject(devptr, "c|user", cpuptr->user);
+			cJSON_AddNumberToObject(devptr, "c|nice", cpuptr->nice);
+			cJSON_AddNumberToObject(devptr, "c|system", cpuptr->system);
+			cJSON_AddNumberToObject(devptr, "c|idle", cpuptr->idle);
+			cJSON_AddNumberToObject(devptr, "c|iowait", cpuptr->iowait);
+			cJSON_AddNumberToObject(devptr, "c|irq", cpuptr->irq);
+			cJSON_AddNumberToObject(devptr, "c|s_irq", cpuptr->softirq);
+			cJSON_AddNumberToObject(devptr, "c|steal", cpuptr->steal);
+			cJSON_AddNumberToObject(devptr, "c|guest", cpuptr->guest);
+			cJSON_AddNumberToObject(devptr, "c|n_guest", cpuptr->guest_nice);
+			cJSON_AddNumberToObject(devptr, "clock", cpuptr->cpuMhz);
+			cJSON_AddItemToArray(cpus, devptr);
+
+			cpuptr = cpuptr->next;
+		}
+		cJSON_AddItemToObject(root, "cpus", cpus);
+    }
+
+    if(pollsw & RPRT_CPU_SSTATIC) {
+
+    	cJSON *cpus_static = cJSON_CreateArray();
+
+    	cpuptr = host_data->cpu;
+    	while(cpuptr != NULL) {
+
+			/* Mow this over every iteration */
+			devptr =  cJSON_CreateObject();
+
+			cJSON_AddNumberToObject(devptr, "cpu", cpuptr->cpu);
+			cJSON_AddStringToObject(devptr, "vendor_id", cpuptr->vendor_id);
+			cJSON_AddStringToObject(devptr, "model", cpuptr->model);
+			cJSON_AddStringToObject(devptr, "flags", cpuptr->flags);
+			cJSON_AddNumberToObject(devptr, "cache", cpuptr->cache);
+			cJSON_AddStringToObject(devptr, "cache_units", cpuptr->cache_units);
+			cJSON_AddNumberToObject(devptr, "phy_id", cpuptr->phy_id);
+			cJSON_AddNumberToObject(devptr, "siblings", cpuptr->siblings);
+			cJSON_AddNumberToObject(devptr, "core_id", cpuptr->core_id);
+			cJSON_AddNumberToObject(devptr, "cpu_cores", cpuptr->cpu_cores);
+			cJSON_AddNumberToObject(devptr, "bogomips", cpuptr->bogomips);
+			cJSON_AddItemToArray(cpus_static, devptr);
+
+			cpuptr = cpuptr->next;
+    	}
+    	cJSON_AddItemToObject(root, "cpus_static", cpus_static);
+    }
+
+    if(pollsw & POLL_MEM) {
+    	cJSON *mem = cJSON_CreateObject();
+    	cJSON_AddNumberToObject(mem, "total", host_data->mem_total);
+    	cJSON_AddNumberToObject(mem, "free", host_data->mem_free);
+    	cJSON_AddNumberToObject(mem, "buffers", host_data->mem_buffers);
+    	cJSON_AddNumberToObject(mem, "cache", host_data->mem_cache);
+    	cJSON_AddNumberToObject(mem, "swap_free", host_data->swap_free);
+    	cJSON_AddNumberToObject(mem, "swap_total", host_data->swap_total);
+    	cJSON_AddItemToObject(root, "memory", mem);
+    }
+
+    endgame = cJSON_Print(root);
+    cJSON_Delete(root);
+    cJSON_Minify(endgame);
+    return endgame;
+}
+#else
 static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw)
 {
 
@@ -468,16 +731,53 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
     if(pollsw & POLL_MEM) {
 
-        tmpobj = json_pack("{sIsIsIsIsIsI}",
-                "total", host_data->mem_total,
-                "free", host_data->mem_free,
-                "buffers", host_data->mem_buffers,
-                "cache", host_data->mem_cache,
-                "swap_free", host_data->swap_free,
-                "swap_total", host_data->swap_total);
-
+        tmpobj = json_pack("{sIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsI}",
+                "MemTotal", host_data->mem.MemTotal,
+                "MemFree", host_data->mem.MemFree,
+                "MemAvailable", host_data->mem.MemAvailable,
+                "Buffers", host_data->mem.Buffers,
+                "Cached", host_data->mem.Cached,
+                "SwapCached", host_data->mem.SwapCached,
+                "Active", host_data->mem.Active,
+                "Inactive", host_data->mem.Inactive,
+                "Active(anon)", host_data->mem.Active_anon_,
+                "Inactive(anon)", host_data->mem.Inactive_anon_,
+                "Active(file)", host_data->mem.Active_file_,
+                "Inactive(file)", host_data->mem.Inactive_file_,
+                "Unevictable", host_data->mem.Unevictable,
+                "Mlocked", host_data->mem.Mlocked,
+                "SwapTotal", host_data->mem.SwapTotal,
+                "SwapFree", host_data->mem.SwapFree,
+                "Dirty", host_data->mem.Dirty,
+                "Writeback", host_data->mem.Writeback,
+                "AnonPages", host_data->mem.AnonPages,
+                "Mapped", host_data->mem.Mapped,
+                "Shmem", host_data->mem.Shmem,
+                "Slab", host_data->mem.Slab,
+                "SReclaimable", host_data->mem.SReclaimable,
+                "SUnreclaim", host_data->mem.SUnreclaim,
+                "KernelStack", host_data->mem.KernelStack,
+                "PageTables", host_data->mem.PageTables,
+                "NFS_Unstable", host_data->mem.NFS_Unstable,
+                "Bounce", host_data->mem.Bounce,
+                "WritebackTmp", host_data->mem.WritebackTmp,
+                "CommitLimit", host_data->mem.CommitLimit,
+                "Committed_AS", host_data->mem.Committed_AS,
+                "VmallocTotal", host_data->mem.VmallocTotal,
+                "VmallocUsed", host_data->mem.VmallocUsed,
+                "VmallocChunk", host_data->mem.VmallocChunk,
+                "HardwareCorrupted", host_data->mem.HardwareCorrupted,
+                "AnonHugePages", host_data->mem.AnonHugePages,
+                "HugePages_Total", host_data->mem.HugePages_Total,
+                "HugePages_Free", host_data->mem.HugePages_Free,
+                "HugePages_Rsvd", host_data->mem.HugePages_Rsvd,
+                "HugePages_Surp", host_data->mem.HugePages_Surp,
+                "Hugepagesize", host_data->mem.Hugepagesize,
+                "DirectMap4k", host_data->mem.DirectMap4k,
+                "DirectMap2M", host_data->mem.DirectMap2M,
+                "DirectMap1G", host_data->mem.DirectMap1G);
+                
         json_object_set_new(root, "memory", tmpobj);
-
     }
 
     res = json_dumps(root, JSON_COMPACT);
@@ -488,6 +788,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
     return res;
 }
+#endif
 
 static inline ssize_t report(char *json_str, agent_config_t *cfg)
 {
@@ -517,7 +818,7 @@ static inline ssize_t report(char *json_str, agent_config_t *cfg)
         memcpy(bfrptr, msgptr, msg_chunk);
 
         send(out_sock, sendbuffer, strlen(sendbuffer), 0);
-
+        
         bytes_sent += msg_chunk;
         msgptr += msg_chunk; // May advance into oblivion. Who cares?
         seq += 1;
@@ -611,6 +912,8 @@ static uint64_t mkrnd64() {
     fclose(r);
     return n;
 }
+
+
 
 /* This is a little off the wall since this used to generate a host ID based
  * off of a hash of the host name. Why? I have no idea - now it's just a
@@ -846,13 +1149,12 @@ int main(int argc, char *argv[])
         if( poll_sw & POLL_LOAD ) poll_load(host_data);
         if( poll_sw & POLL_UPTIME ) poll_uptime(host_data);
         if( poll_sw & POLL_FS ) poll_fs(host_data->fsinf);
-#ifdef DEBUG
-        dump_cpudata(host_data);
-#endif
+
         /* Time-stamp the sample */
         gettimeofday(&host_data->sample_tv, NULL);
 
         json_str = jsonify(host_data, cfg, poll_sw);
+
         report(json_str, cfg);
         free(json_str);
 

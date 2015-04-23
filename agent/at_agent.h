@@ -33,6 +33,8 @@
 #define STR_BUFFER_SZ 255
 #define LINE_BUFFER_SZ 1024
 
+/* cJSON options */
+#define MAX_DEVS 128
 
 #define AT_AGENT_HELP "\n\
 Use: at_agent [OPTION]\n\

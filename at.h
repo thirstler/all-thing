@@ -106,52 +106,52 @@ typedef struct memval_s {
 	char unit[4];
 } memval_t;
 
-typedef struct ext_meminf_s {
-	memval_t MemTotal;
-	memval_t MemFree;
-	memval_t MemAvailable;
-	memval_t Buffers;
-	memval_t Cached;
-	memval_t SwapCached;
-	memval_t Active;
-	memval_t Inactive;
-	memval_t Active_anon;
-	memval_t Inactive_anon;
-	memval_t Active_file;
-	memval_t Inactive_file;
-	memval_t Unevictable;
-	memval_t Mlocked;
-	memval_t SwapTotal;
-	memval_t SwapFree;
-	memval_t Dirty;
-	memval_t Writeback;
-	memval_t AnonPages;
-	memval_t Mapped;
-	memval_t Shmem;
-	memval_t Slab;
-	memval_t SReclaimable;
-	memval_t SUnreclaim;
-	memval_t KernelStack;
-	memval_t PageTables;
-	memval_t NFS_Unstable;
-	memval_t Bounce;
-	memval_t WritebackTmp;
-	memval_t CommitLimit;
-	memval_t Committed_AS;
-	memval_t VmallocTotal;
-	memval_t VmallocUsed;
-	memval_t VmallocChunk;
-	memval_t HardwareCorrupted;
-	memval_t AnonHugePages;
-	memval_t HugePages_Total;
-	memval_t HugePages_Free;
-	memval_t HugePages_Rsvd;
-	memval_t HugePages_Surp;
-	memval_t Hugepagesize;
-	memval_t DirectMap4k;
-	memval_t DirectMap2M;
-	memval_t DirectMap1G;
-} ext_meminf_t;
+typedef struct meminf_s {
+    uint64_t MemTotal;
+    uint64_t MemFree;
+    uint64_t MemAvailable;
+    uint64_t Buffers;
+    uint64_t Cached;
+    uint64_t SwapCached;
+    uint64_t Active;
+    uint64_t Inactive;
+    uint64_t Active_anon_;
+    uint64_t Inactive_anon_;
+    uint64_t Active_file_;
+    uint64_t Inactive_file_;
+    uint64_t Unevictable;
+    uint64_t Mlocked;
+    uint64_t SwapTotal;
+    uint64_t SwapFree;
+    uint64_t Dirty;
+    uint64_t Writeback;
+    uint64_t AnonPages;
+    uint64_t Mapped;
+    uint64_t Shmem;
+    uint64_t Slab;
+    uint64_t SReclaimable;
+    uint64_t SUnreclaim;
+    uint64_t KernelStack;
+    uint64_t PageTables;
+    uint64_t NFS_Unstable;
+    uint64_t Bounce;
+    uint64_t WritebackTmp;
+    uint64_t CommitLimit;
+    uint64_t Committed_AS;
+    uint64_t VmallocTotal;
+    uint64_t VmallocUsed;
+    uint64_t VmallocChunk;
+    uint64_t HardwareCorrupted;
+    uint64_t AnonHugePages;
+    uint64_t HugePages_Total;
+    uint64_t HugePages_Free;
+    uint64_t HugePages_Rsvd;
+    uint64_t HugePages_Surp;
+    uint64_t Hugepagesize;
+    uint64_t DirectMap4k;
+    uint64_t DirectMap2M;
+    uint64_t DirectMap1G;
+} meminf_t;
 
 typedef struct sysinf_s {
     char *hostname;
@@ -167,13 +167,7 @@ typedef struct sysinf_s {
     u_int procs_running;
     u_int procs_total;
 
-    /* Memory information */
-    uint64_t mem_total;
-    uint64_t mem_free;
-    uint64_t mem_buffers;
-    uint64_t mem_cache;
-    uint64_t swap_free;
-    uint64_t swap_total;
+    meminf_t mem;
 
     /* total CPU values */
     uint64_t interrupts;

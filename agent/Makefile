@@ -1,9 +1,13 @@
+#ifdef ${CJSONFLAGS}
+CJSON_OBJS:=../cJSON.o
+#endif
 CC=gcc
-CFLAGS=-g -m64 -Wall -O1
+CFLAGS=-g -m64 -Wall -O1 ${CJSONFLAGS}
 LDFLAGS=-g -lm -ljansson -lpthread
+AGENT_OBJECTS=../ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o ${CJSON_OBJS}
 
-at_agent: fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o
-	${CC} ${LDFLAGS} ../ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o -o at_agent
+at_agent: ${AGENT_OBJECTS}
+	${CC} ${LDFLAGS} ${AGENT_OBJECTS} -o at_agent
 	
 fsops.o: fsops.c ../at.h at_agent.h
 	${CC} ${CFLAGS} -o fsops.o -c fsops.c

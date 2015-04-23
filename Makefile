@@ -1,19 +1,27 @@
+CJSONFLAGS:=
+#ifdef ${CJSONFLAGS}
+CJSON_OBJS:=cJSON.o
+#endif
 CC=gcc
-CFLAGS:=-g -m64 -Wall -O1
+CFLAGS:=-g -m64 -Wall -O1 ${CJSONFLAGS}
 LDFLAGS:=-g -lm -ljansson -lpthread
 DESTDIR:=
 MASTER_LDFLAGS:=${LDFLAGS} -lpq
+AGENT_TL_OBJECTS=agent/Makefile ini.o ${CJSON_OBJS}
 
 all: at_agent at_master 
 
-at_agent: agent/Makefile ini.o
-	cd agent && make
+at_agent: ${AGENT_TL_OBJECTS}
+	cd agent && CJSONFLAGS=${CJSONFLAGS} make
 
 at_master: master/Makefile ini.o
 	cd master && make
 
 ini.o: ini.c ini.h
 	${CC} ${CFLAGS} -o ini.o -c ini.c
+
+cJSON.o: cJSON.c cJSON.h
+	${CC} ${CFLAGS} -o cJSON.o -c cJSON.c
 
 install: at_agent
 

@@ -75,7 +75,7 @@ void init_proc(cpu_inf_t* cpu)
         if( strstr(linebuf, "flags") != NULL )
             SET_CPUINF_STR_VAL(cpu->flags, get_cpuinfstr(linebuf));
 
-        cpu->cache_units = malloc(sizeof(char)*4);
+        if(cpu->cache_units == NULL) cpu->cache_units = malloc(sizeof(char)*4);
         sscanf(linebuf, "cache size : %u %s", &cpu->cache, cpu->cache_units);
         sscanf(linebuf, "physical id : %u", &cpu->phy_id);
         sscanf(linebuf, "siblings : %u", &cpu->siblings);
