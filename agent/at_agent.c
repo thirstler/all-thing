@@ -141,7 +141,7 @@ static inline void poll_mem(sysinf_t *host_data)
     fread(meminfbuf, PROC_MEMINF_BUFFER, 1, fh);
     fclose(fh);
 
-    sscanf(fp = strstr(meminfbuf, "MemTotal:"), "MemTotal: %lu", &host_data->mem.MemTotal);
+    sscanf(fp = strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
     sscanf(fp = strstr(meminfbuf, "MemFree:"), "MemFree: %lu", &host_data->mem.MemFree);
     sscanf(fp = strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
     sscanf(fp = strstr(meminfbuf, "Buffers:"), "Buffers: %lu", &host_data->mem.Buffers);
@@ -499,20 +499,58 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
     if(pollsw & POLL_MEM) {
     	cJSON *mem = cJSON_CreateObject();
-    	cJSON_AddNumberToObject(mem, "total", host_data->mem_total);
-    	cJSON_AddNumberToObject(mem, "free", host_data->mem_free);
-    	cJSON_AddNumberToObject(mem, "buffers", host_data->mem_buffers);
-    	cJSON_AddNumberToObject(mem, "cache", host_data->mem_cache);
-    	cJSON_AddNumberToObject(mem, "swap_free", host_data->swap_free);
-    	cJSON_AddNumberToObject(mem, "swap_total", host_data->swap_total);
+		cJSON_AddNumberToObject(mem, "MemTotal", host_data->mem.MemTotal);
+        cJSON_AddNumberToObject(mem, "MemFree", host_data->mem.MemFree);
+        cJSON_AddNumberToObject(mem, "MemAvailable", host_data->mem.MemAvailable);
+        cJSON_AddNumberToObject(mem, "Buffers", host_data->mem.Buffers);
+        cJSON_AddNumberToObject(mem, "Cached", host_data->mem.Cached);
+        cJSON_AddNumberToObject(mem, "SwapCached", host_data->mem.SwapCached);
+        cJSON_AddNumberToObject(mem, "Active", host_data->mem.Active);
+        cJSON_AddNumberToObject(mem, "Inactive", host_data->mem.Inactive);
+        cJSON_AddNumberToObject(mem, "Active(anon)", host_data->mem.Active_anon_);
+        cJSON_AddNumberToObject(mem, "Inactive(anon)", host_data->mem.Inactive_anon_);
+        cJSON_AddNumberToObject(mem, "Active(file)", host_data->mem.Active_file_);
+        cJSON_AddNumberToObject(mem, "Inactive(file)", host_data->mem.Inactive_file_);
+        cJSON_AddNumberToObject(mem, "Unevictable", host_data->mem.Unevictable);
+        cJSON_AddNumberToObject(mem, "Mlocked", host_data->mem.Mlocked);
+        cJSON_AddNumberToObject(mem, "SwapTotal", host_data->mem.SwapTotal);
+        cJSON_AddNumberToObject(mem, "SwapFree", host_data->mem.SwapFree);
+        cJSON_AddNumberToObject(mem, "Dirty", host_data->mem.Dirty);
+        cJSON_AddNumberToObject(mem, "Writeback", host_data->mem.Writeback);
+        cJSON_AddNumberToObject(mem, "AnonPages", host_data->mem.AnonPages);
+        cJSON_AddNumberToObject(mem, "Mapped", host_data->mem.Mapped);
+        cJSON_AddNumberToObject(mem, "Shmem", host_data->mem.Shmem);
+        cJSON_AddNumberToObject(mem, "Slab", host_data->mem.Slab);
+        cJSON_AddNumberToObject(mem, "SReclaimable", host_data->mem.SReclaimable);
+        cJSON_AddNumberToObject(mem, "SUnreclaim", host_data->mem.SUnreclaim);
+        cJSON_AddNumberToObject(mem, "KernelStack", host_data->mem.KernelStack);
+        cJSON_AddNumberToObject(mem, "PageTables", host_data->mem.PageTables);
+        cJSON_AddNumberToObject(mem, "NFS_Unstable", host_data->mem.NFS_Unstable);
+        cJSON_AddNumberToObject(mem, "Bounce", host_data->mem.Bounce);
+        cJSON_AddNumberToObject(mem, "WritebackTmp", host_data->mem.WritebackTmp);
+        cJSON_AddNumberToObject(mem, "CommitLimit", host_data->mem.CommitLimit);
+        cJSON_AddNumberToObject(mem, "Committed_AS", host_data->mem.Committed_AS);
+        cJSON_AddNumberToObject(mem, "VmallocTotal", host_data->mem.VmallocTotal);
+        cJSON_AddNumberToObject(mem, "VmallocUsed", host_data->mem.VmallocUsed);
+        cJSON_AddNumberToObject(mem, "VmallocChunk", host_data->mem.VmallocChunk);
+        cJSON_AddNumberToObject(mem, "HardwareCorrupted", host_data->mem.HardwareCorrupted);
+        cJSON_AddNumberToObject(mem, "AnonHugePages", host_data->mem.AnonHugePages);
+        cJSON_AddNumberToObject(mem, "HugePages_Total", host_data->mem.HugePages_Total);
+        cJSON_AddNumberToObject(mem, "HugePages_Free", host_data->mem.HugePages_Free);
+        cJSON_AddNumberToObject(mem, "HugePages_Rsvd", host_data->mem.HugePages_Rsvd);
+        cJSON_AddNumberToObject(mem, "HugePages_Surp", host_data->mem.HugePages_Surp);
+        cJSON_AddNumberToObject(mem, "Hugepagesize", host_data->mem.Hugepagesize);
+        cJSON_AddNumberToObject(mem, "DirectMap4k", host_data->mem.DirectMap4k);
+        cJSON_AddNumberToObject(mem, "DirectMap2M", host_data->mem.DirectMap2M);
+        cJSON_AddNumberToObject(mem, "DirectMap1G", host_data->mem.DirectMap1G);
     	cJSON_AddItemToObject(root, "memory", mem);
     }
-
     endgame = cJSON_Print(root);
     cJSON_Delete(root);
     cJSON_Minify(endgame);
     return endgame;
 }
+
 #else
 static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw)
 {

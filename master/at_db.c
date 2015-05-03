@@ -121,10 +121,6 @@ char *mk_pgts_str_fm_jsontv(json_t *ts)
 	return datestr;
 }
 
-int init_cache_entry(sysinf_t *newme)
-{
-	static char q[65536];
-}
 
 #define MAX_QUERY_LEN 65536
 void write_agent_to_cache(obj_rec_t* data, int new)
