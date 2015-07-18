@@ -107,7 +107,7 @@ typedef struct agent_sysstats_s {
 void dump_cpudata(sysinf_t *host_data);
 
 /* Run a CPU data poll */
-inline void poll_cpus(sysinf_t *host_data);
+void poll_cpus(sysinf_t *host_data);
 
 /* Initialize the CPUs data structure. Removes any existing CPUs in the linked
  * list starts it over. */
@@ -120,7 +120,7 @@ cpu_inf_t* del_cpu(cpu_inf_t* cpu, u_int proc);
 /* helper functions */
 void init_proc(cpu_inf_t* cpu);
 
-inline char* get_cpuinfstr(char* buffer);
+char* get_cpuinfstr(char* buffer);
 
 /******************************************************************************
  * Iface operations **********************************************************/
@@ -148,12 +148,12 @@ iodev_inf_t* del_iodev(iodev_inf_t* iodev, char* devname);
 
 iodev_inf_t* push_iodev(iodev_inf_t* dev, char *devname);
 
-inline void poll_iodev(iodev_inf_t* iodev);
+void poll_iodev(iodev_inf_t* iodev);
 
 /******************************************************************************
  * File system operations ****************************************************/
 
-inline void poll_fs(fsinf_t* fs);
+void poll_fs(fsinf_t* fs);
 
 fsinf_t* del_fs(fsinf_t* fs, char* mountpoint);
 

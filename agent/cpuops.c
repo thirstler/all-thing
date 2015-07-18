@@ -35,7 +35,7 @@ cpu_inf_t* del_cpu(cpu_inf_t* cpu, u_int proc)
     return first;
 }
 
-inline char* get_cpuinfstr(char* buffer)
+char* get_cpuinfstr(char* buffer)
 {
     char *ptr;
     if( (ptr = strchr(buffer, ':')) != NULL) {
@@ -180,7 +180,7 @@ void dump_cpudata(sysinf_t *host_data)
 }
 #endif
 
-inline void poll_cpus(sysinf_t *host_data)
+void poll_cpus(sysinf_t *host_data)
 {
     cpu_inf_t* cpus = host_data->cpu;
     cpu_inf_t* first = cpus;

@@ -52,7 +52,7 @@ void dump_fs(fsinf_t* fs)
 }
 #endif
 
-inline void poll_fs(fsinf_t* fs)
+void poll_fs(fsinf_t* fs)
 {
     struct statfs sb;
     while(fs != NULL) {

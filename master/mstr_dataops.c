@@ -21,7 +21,7 @@
 
 extern master_config_t *cfg;
 
-inline void free_obj_rec(obj_rec_t *dobj)
+void free_obj_rec(obj_rec_t *dobj)
 {
 	if(dobj == NULL) return;
 	json_object_clear(dobj->record);
@@ -29,7 +29,7 @@ inline void free_obj_rec(obj_rec_t *dobj)
 	free(dobj);
 }
 
-inline int rm_obj_rec(uint64_t id, master_global_data_t *data)
+int rm_obj_rec(uint64_t id, master_global_data_t *data)
 {
 	size_t i;
 
@@ -45,7 +45,7 @@ inline int rm_obj_rec(uint64_t id, master_global_data_t *data)
 	return EXIT_SUCCESS;
 }
 
-inline obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data)
+obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data)
 {
 	// Brute force for now, I'll get fancy later
 	size_t i;
@@ -59,7 +59,7 @@ inline obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data)
 	return NULL;
 }
 
-inline int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
+int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
 {
 	size_t i;
 

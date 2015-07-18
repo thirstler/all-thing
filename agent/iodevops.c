@@ -81,7 +81,7 @@ void dump_iodevdata(iodev_inf_t* iodev)
     }
 }
 
-inline void poll_iodev(iodev_inf_t* iodev)
+void poll_iodev(iodev_inf_t* iodev)
 {
     char statbuffer[PROC_DISKSTATS_BUFFER];
     char *statptr = NULL;

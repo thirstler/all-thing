@@ -13,14 +13,14 @@
 #include <syslog.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include "../ini.h"
+#include "../at.h"
+#include "at_agent.h"
 #ifdef USE_CJSON
 #include "../cJSON.h"
 #else
 #include <jansson.h>
 #endif
-#include "../ini.h"
-#include "../at.h"
-#include "at_agent.h"
 
 int on;
 int out_sock;

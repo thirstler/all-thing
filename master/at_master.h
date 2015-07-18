@@ -215,23 +215,23 @@ void *server_listener(void *dptr);
 /**
  * Fetch record with ID "id" from the master system data object
  */
-inline obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data);
+obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data);
 
 /**
  * Add obj_rec_t pointer to the master data object. Does not copy data so
  * don't free source - it lives here how.
  */
-inline int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj);
+int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj);
 /**
  * Remove data object "id" from the master system data object
  */
-inline int rm_obj_rec(uint64_t id, master_global_data_t *data);
+int rm_obj_rec(uint64_t id, master_global_data_t *data);
 
 /**
  * Free a data object. Simply calls json_decref() and frees the struct. May
  * do more later.
  */
-inline void free_obj_rec(obj_rec_t *dobj);
+void free_obj_rec(obj_rec_t *dobj);
 
 /**
  * Calculate rates from selected counters
@@ -270,7 +270,7 @@ void write_agent_to_cache(obj_rec_t* data, int new);
 /*
  * Clean-up agent cache table on start-up/shutdown
  */
-inline int drop_agent_cache();
+int drop_agent_cache();
 
 /*
  * Create system table if necessary

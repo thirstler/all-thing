@@ -4,11 +4,14 @@ CJSON_OBJS:=../cJSON.o
 CC=gcc
 CFLAGS=-g -m64 -Wall -O1 ${CJSONFLAGS}
 LDFLAGS=-g -lm -ljansson -lpthread
-AGENT_OBJECTS=../ini.o fsops.o cpuops.o iodevops.o ifaceops.o at_agent.o ${CJSON_OBJS}
+AGENT_OBJECTS=../ini.o cpuops.o at_agent.o fsops.o iodevops.o ifaceops.o ${CJSON_OBJS}
 
 at_agent: ${AGENT_OBJECTS}
 	${CC} ${LDFLAGS} ${AGENT_OBJECTS} -o at_agent
 	
+at_agent.o: at_agent.c ../at.h at_agent.h
+	${CC} ${CFLAGS} -o at_agent.o -c at_agent.c 
+
 fsops.o: fsops.c ../at.h at_agent.h
 	${CC} ${CFLAGS} -o fsops.o -c fsops.c
 	
