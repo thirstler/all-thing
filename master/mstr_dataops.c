@@ -124,6 +124,12 @@ json_t* get_rates(json_t *old, json_t *new, struct timeval *t_diff)
 
 	case(JSON_ARRAY):
 
+#if JANSSON_VERSION_HEX < 0x020500
+#define json_array_foreach(array, index, value) \
+        for(index = 0; \
+                index < json_array_size(array) && (value = json_array_get(array, index)); \
+                index++)
+#endif
 		/* Arrays have no ability to indicated data type per item. We have to
 		 * assume they are all counters. */
 		new_obj = json_array();
@@ -132,7 +138,6 @@ json_t* get_rates(json_t *old, json_t *new, struct timeval *t_diff)
 			if(jptr == NULL) continue;
 			json_array_append_new(new_obj, get_rates(value, jptr, t_diff));
 		}
-
 		break;
 
 	case(JSON_INTEGER):
