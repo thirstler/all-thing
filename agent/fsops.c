@@ -63,7 +63,7 @@ void poll_fs(fsinf_t* fs)
             fs->block_size = sb.f_bsize;
             fs->inodes_ttl = sb.f_files;
             fs->inodes_free = sb.f_ffree;
-            fs->fstype = strdup("uimp");
+            sprintf(fs->fstype = malloc(20), "0x%lx", sb.f_type);
         }
         fs = fs->next;
     }

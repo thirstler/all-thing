@@ -133,7 +133,7 @@ static inline const char* get_mem_val(const char *key, memval_t* val, const char
 }
 
 /* poor man's hash-table */
-#define MF_MF_MEMTOTAL        0x0000000000000000
+#define MF_MEMTOTAL           0x0000000000000000
 #define MF_MEMFREE            0x0000000000000001
 #define MF_MEMAVAILABLE       0x0000000000000002
 #define MF_CACHED             0x0000000000000004
@@ -176,72 +176,63 @@ static inline const char* get_mem_val(const char *key, memval_t* val, const char
 #define MF_DIRECTMAP2M        0x0000008000000000
 #define MF_DIRECTMAP1G        0x0000010000000000
 
-#define ADDFLAG(pf, search, buf, fv) {\
-	if(strstr(buf, search) != NULL) pf |= fv;\
-}\
+#define ADDFLAG(search, fv) {\
+	if(strstr(meminfbuf, search) != NULL) pollflags |= fv;\
+}
 
 static inline void poll_mem(sysinf_t *host_data)
 {
-	static char *fields[] = NULL;
-	static int pollflags = 0;
+	static long pollflags = 0;
 
     FILE *fh = fopen("/proc/meminfo", "r");
-    char meminfbuf[PROC_MEMINF_BUFFER];
+    static char meminfbuf[PROC_MEMINF_BUFFER];
 
     fread(meminfbuf, PROC_MEMINF_BUFFER, 1, fh);
     fclose(fh);
 
-    if(fields == NULL) {
-    	fields = malloc(sizeof(char*) * 45); /* 45 field max */
-    	memset(fields, NULL, sizeof(char*) * 45);
-    	fields[MF_MF_MEMTOTAL] = strdup("MemTotal"); /* Always there */
-    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
-    	ADDFLAG(MF_MEMAVAILABLE, "MemAvailable:", meminfbuf, pollflags);
-    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
-    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
-    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
-
-    	if(strstr(meminfbuf, "MemFree:") != NULL) pollflags |= MF_MEMFREE;
-    	if(strstr(meminfbuf, "MemAvailable:") != NULL) pollflags |= MF_MEMAVAILABLE;
-    	if(strstr(meminfbuf, "Cached:") != NULL) pollflags |= MF_MEMAVAILABLE;
-    	if(strstr(meminfbuf, "SwapCached:") != NULL) pollflags |= MF_SWAPCACHED;
-    	if(strstr(meminfbuf, "Active:") != NULL) pollflags |= MF_ACIVE;
-    	if(strstr(meminfbuf, "Inactive:") != NULL) pollflags |= MF_INACTIVE;
-    	if(strstr(meminfbuf, "Active(anon):") != NULL) pollflags |= MF_ACTIVE_ANON_;
-    	if(strstr(meminfbuf, "Inactive(anon):") != NULL) pollflags |= MF_INACTIVE_ANON_;
-    	if(strstr(meminfbuf, "Active(file):") != NULL) pollflags |= MF_ACTIVE_FILE_;
-    	if(strstr(meminfbuf, "Inactive(file):") != NULL) pollflags |= MF_INACTIVE_FILE_;
-    	if(strstr(meminfbuf, "Unevictable:") != NULL) pollflags |= MF_UNEVICTABLE;
-    	if(strstr(meminfbuf, "Mlocked:") != NULL) pollflags |= MF_MLOCKED;
-    	if(strstr(meminfbuf, "SwapTotal:") != NULL) pollflags |= MF_SWAPTOTAL;
-    	if(strstr(meminfbuf, "SwapFree:") != NULL) pollflags |= MF_SWAPFREE;
-    	if(strstr(meminfbuf, "Dirty:") != NULL) pollflags |= MF_DIRTY;
-    	if(strstr(meminfbuf, "Writeback:") != NULL) pollflags |= MF_WRITEBACK;
-    	if(strstr(meminfbuf, "AnonPages:") != NULL) pollflags |= MF_ANONPAGES;
-    	if(strstr(meminfbuf, "Mapped::") != NULL) pollflags |= MF_MAPPED;
-    	if(strstr(meminfbuf, "Shmem:") != NULL) pollflags |= MF_SHMEM;
-    	if(strstr(meminfbuf, "Slab:") != NULL) pollflags |= MF_SLAB;
-    	if(strstr(meminfbuf, "SReclaimable:") != NULL) pollflags |= MF_SRECLAIMABLE;
-    	if(strstr(meminfbuf, "SUnreclaim:") != NULL) pollflags |= MF_SUNRECLAIM;
-    	if(strstr(meminfbuf, "KernelStack:") != NULL) pollflags |= MF_KERNELSTACK;
-    	if(strstr(meminfbuf, "PageTables:") != NULL) pollflags |= MF_PAGETABLES;
-    	if(strstr(meminfbuf, "NFS_Unstable:") != NULL) pollflags |= MF_NFS_UNSTABLE;
-    	if(strstr(meminfbuf, "WritebackTmp:") != NULL) pollflags |= MF_WRITEBACKTMP;
-    	if(strstr(meminfbuf, "CommitLimit:") != NULL) pollflags |= MF_COMMITLIMIT;
-    	if(strstr(meminfbuf, "Committed_AS:") != NULL) pollflags |= MF_COMMITTED_AS;
-    	if(strstr(meminfbuf, "VmallocTotal:") != NULL) pollflags |= MF_VMALLOCTOTAL;
-    	if(strstr(meminfbuf, "VmallocUsed:") != NULL) pollflags |= MF_VMALLOCUSED;
-    	if(strstr(meminfbuf, "VmallocChunk:") != NULL) pollflags |= MF_VMALLOCCHUNK;
-    	if(strstr(meminfbuf, "HardwareCorrupted:") != NULL) pollflags |= MF_HARDWARECORRUPTED;
-    	if(strstr(meminfbuf, "AnonHugePages:") != NULL) pollflags |= MF_ANONHUGEPAGES;
-    	if(strstr(meminfbuf, "HugePages_Total:") != NULL) pollflags |= MF_HUGEPAGES_TOTAL;
-    	if(strstr(meminfbuf, "HugePages_Free:") != NULL) pollflags |= MF_HUGEPAGES_FREE;
-    	if(strstr(meminfbuf, "HugePages_Rsvd:") != NULL) pollflags |= MF_HUGEPAGES_RSVD;
-    	if(strstr(meminfbuf, "HugePages_Surp:") != NULL) pollflags |= MF_HUGEPAGES_SURP;
-    	if(strstr(meminfbuf, "Hugepagesize:") != NULL) pollflags |= MF_HUGEPAGESIZE;
-    	if(strstr(meminfbuf, "DirectMap4k:") != NULL) pollflags |= MF_DIRECTMAP4K;
-    	if(strstr(meminfbuf, "DirectMap2M:") != NULL) pollflags |= MF_DIRECTMAP2M;
-    	if(strstr(meminfbuf, "DirectMap1G:") != NULL) pollflags |= MF_DIRECTMAP1G;
+    if(pollflags == 0) {
+    	ADDFLAG("MemTotal:", MF_MEMTOTAL);
+    	ADDFLAG("MemFree:", MF_MEMFREE);
+    	ADDFLAG("MemAvailable:", MF_MEMAVAILABLE);
+    	ADDFLAG("Cached:", MF_CACHED);
+    	ADDFLAG("SwapCached:", MF_SWAPCACHED);
+    	ADDFLAG("Active:", MF_ACIVE);
+    	ADDFLAG("Inactive:", MF_INACTIVE);
+    	ADDFLAG("Active(anon):", MF_ACTIVE_ANON_);
+    	ADDFLAG("Inactive(anon):", MF_INACTIVE_ANON_);
+    	ADDFLAG("Active(file):", MF_ACTIVE_FILE_);
+    	ADDFLAG("Inactive(file):", MF_INACTIVE_FILE_);
+    	ADDFLAG("Unevictable:", MF_UNEVICTABLE);
+    	ADDFLAG("Mlocked:", MF_MLOCKED);
+    	ADDFLAG("SwapTotal:", MF_SWAPTOTAL);
+    	ADDFLAG("SwapFree:", MF_SWAPFREE);
+    	ADDFLAG("Dirty:", MF_DIRTY);
+    	ADDFLAG("Writeback:", MF_WRITEBACK);
+    	ADDFLAG("AnonPages:", MF_ANONPAGES);
+    	ADDFLAG("Mapped:", MF_MAPPED);
+    	ADDFLAG("Shmem:", MF_SHMEM);
+    	ADDFLAG("Slab:", MF_SLAB);
+    	ADDFLAG("SReclaimable:", MF_SRECLAIMABLE);
+    	ADDFLAG("SUnreclaim:", MF_SUNRECLAIM);
+    	ADDFLAG("KernelStack:", MF_KERNELSTACK);
+    	ADDFLAG("PageTables:", MF_PAGETABLES);
+    	ADDFLAG("NFS_Unstable:", MF_NFS_UNSTABLE);
+    	ADDFLAG("WritebackTmp:", MF_WRITEBACKTMP);
+    	ADDFLAG("CommitLimit:", MF_COMMITLIMIT);
+    	ADDFLAG("Committed_AS:", MF_COMMITTED_AS);
+    	ADDFLAG("VmallocTotal:", MF_VMALLOCTOTAL);
+    	ADDFLAG("VmallocUsed:", MF_VMALLOCUSED);
+    	ADDFLAG("VmallocChunk:", MF_VMALLOCCHUNK);
+    	ADDFLAG("HardwareCorrupted:", MF_HARDWARECORRUPTED);
+    	ADDFLAG("AnonHugePages:", MF_ANONHUGEPAGES);
+    	ADDFLAG("HugePages_Total:", MF_HUGEPAGES_TOTAL);
+    	ADDFLAG("HugePages_Free:", MF_HUGEPAGES_FREE);
+    	ADDFLAG("HugePages_Rsvd:", MF_HUGEPAGES_RSVD);
+    	ADDFLAG("HugePages_Surp:", MF_HUGEPAGES_SURP);
+    	ADDFLAG("Hugepagesize:", MF_HUGEPAGESIZE);
+    	ADDFLAG("DirectMap4k:", MF_DIRECTMAP4K);
+    	ADDFLAG("DirectMap2M:", MF_DIRECTMAP2M);
+    	ADDFLAG("DirectMap1G:", MF_DIRECTMAP1G);
     }
 
     sscanf(strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
@@ -287,7 +278,10 @@ static inline void poll_mem(sysinf_t *host_data)
     sscanf(strstr(meminfbuf, "Hugepagesize:"), "Hugepagesize: %lu", &host_data->mem.Hugepagesize);
     sscanf(strstr(meminfbuf, "DirectMap4k:"), "DirectMap4k: %lu", &host_data->mem.DirectMap4k);
     sscanf(strstr(meminfbuf, "DirectMap2M:"), "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
-    sscanf(strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu", &host_data->mem.DirectMap1G);
+
+    if(pollflags & MF_DIRECTMAP1G)
+    	sscanf(strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu",
+    			&host_data->mem.DirectMap1G);
 }
 
 static inline void poll_uptime(sysinf_t *host_data)
@@ -426,12 +420,17 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         fsptr = host_data->fsinf;
         while(fsptr != NULL) {
 
+        	printf("->%s, %s\n", fsptr->mountpoint, fsptr->fstype);
+
+        	if(fsptr->fstype == NULL) {
+        		fsptr->fstype = strdup("0x0");
+        	}
         	/* Mow this over every iteration */
         	devptr =  cJSON_CreateObject();
             cJSON_AddStringToObject(devptr, "dev", fsptr->dev);
             cJSON_AddStringToObject(devptr, "mountpoint", fsptr->mountpoint);
             cJSON_AddStringToObject(devptr, "fstype", fsptr->fstype);
-            cJSON_AddNumberToObject(devptr, "fstype", fsptr->blks_total);
+            cJSON_AddNumberToObject(devptr, "blks_total", fsptr->blks_total);
             cJSON_AddNumberToObject(devptr, "blks_free", fsptr->blks_free);
             cJSON_AddNumberToObject(devptr, "blks_avail", fsptr->blks_avail);
             cJSON_AddNumberToObject(devptr, "block_size", fsptr->block_size);

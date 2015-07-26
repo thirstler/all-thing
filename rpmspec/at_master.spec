@@ -1,5 +1,5 @@
 Name: all-thing-master
-Version: 0.8.3
+Version: 0.8.4
 Release: 1%{?dist}
 Summary: All thing monitoring collector/server	
  
@@ -39,6 +39,8 @@ cp scripts/at_master.rc %{buildroot}/etc/init.d/at_master
 chkconfig --add at_master
 
 %changelog
+* Sun Jul 26 2015 <Jason Russler> jason.russler@gmail.com 0.8.4-1
+- Clean up
 * Tue Oct 28 2014 <Jason Russler> jason.russler@gmail.com 0.8.1-1
 - Updated system to processes rate informantion differently. Rates will process
   in the presence of a flag in the json label. Rate data is now placed in the
