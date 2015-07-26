@@ -132,60 +132,162 @@ static inline const char* get_mem_val(const char *key, memval_t* val, const char
 	return ring;
 }
 
+/* poor man's hash-table */
+#define MF_MF_MEMTOTAL        0x0000000000000000
+#define MF_MEMFREE            0x0000000000000001
+#define MF_MEMAVAILABLE       0x0000000000000002
+#define MF_CACHED             0x0000000000000004
+#define MF_SWAPCACHED         0x0000000000000008
+#define MF_ACIVE              0x0000000000000010
+#define MF_INACTIVE           0x0000000000000020
+#define MF_ACTIVE_ANON_       0x0000000000000040
+#define MF_INACTIVE_ANON_     0x0000000000000080
+#define MF_ACTIVE_FILE_       0x0000000000000100
+#define MF_INACTIVE_FILE_     0x0000000000000200
+#define MF_UNEVICTABLE        0x0000000000000400
+#define MF_MLOCKED            0x0000000000000800
+#define MF_SWAPTOTAL          0x0000000000001000
+#define MF_SWAPFREE           0x0000000000002000
+#define MF_DIRTY              0x0000000000004000
+#define MF_WRITEBACK          0x0000000000008000
+#define MF_ANONPAGES          0x0000000000010000
+#define MF_MAPPED             0x0000000000020000
+#define MF_SHMEM              0x0000000000040000
+#define MF_SLAB               0x0000000000080000
+#define MF_SRECLAIMABLE       0x0000000000100000
+#define MF_SUNRECLAIM         0x0000000000200000
+#define MF_KERNELSTACK        0x0000000000400000
+#define MF_PAGETABLES         0x0000000000800000
+#define MF_NFS_UNSTABLE       0x0000000001000000
+#define MF_WRITEBACKTMP       0x0000000002000000
+#define MF_COMMITLIMIT        0x0000000004000000
+#define MF_COMMITTED_AS       0x0000000008000000
+#define MF_VMALLOCTOTAL       0x0000000010000000
+#define MF_VMALLOCUSED        0x0000000020000000
+#define MF_VMALLOCCHUNK       0x0000000040000000
+#define MF_HARDWARECORRUPTED  0x0000000080000000
+#define MF_ANONHUGEPAGES      0x0000000100000000
+#define MF_HUGEPAGES_TOTAL    0x0000000200000000
+#define MF_HUGEPAGES_FREE     0x0000000400000000
+#define MF_HUGEPAGES_RSVD     0x0000000800000000
+#define MF_HUGEPAGES_SURP     0x0000001000000000
+#define MF_HUGEPAGESIZE       0x0000002000000000
+#define MF_DIRECTMAP4K        0x0000004000000000
+#define MF_DIRECTMAP2M        0x0000008000000000
+#define MF_DIRECTMAP1G        0x0000010000000000
+
+#define ADDFLAG(pf, search, buf, fv) {\
+	if(strstr(buf, search) != NULL) pf |= fv;\
+}\
+
 static inline void poll_mem(sysinf_t *host_data)
 {
+	static char *fields[] = NULL;
+	static int pollflags = 0;
+
     FILE *fh = fopen("/proc/meminfo", "r");
     char meminfbuf[PROC_MEMINF_BUFFER];
-    char *fp;
 
     fread(meminfbuf, PROC_MEMINF_BUFFER, 1, fh);
     fclose(fh);
 
-    sscanf(fp = strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
-    sscanf(fp = strstr(meminfbuf, "MemFree:"), "MemFree: %lu", &host_data->mem.MemFree);
-    sscanf(fp = strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
-    sscanf(fp = strstr(meminfbuf, "Buffers:"), "Buffers: %lu", &host_data->mem.Buffers);
-    sscanf(fp = strstr(meminfbuf, "Cached:"), "Cached: %lu", &host_data->mem.Cached);
-    sscanf(fp = strstr(meminfbuf, "SwapCached:"), "SwapCached: %lu", &host_data->mem.SwapCached);
-    sscanf(fp = strstr(meminfbuf, "Active:"), "Active: %lu", &host_data->mem.Active);
-    sscanf(fp = strstr(meminfbuf, "Inactive:"), "Inactive: %lu", &host_data->mem.Inactive);
-    sscanf(fp = strstr(meminfbuf, "Active(anon):"), "Active(anon): %lu", &host_data->mem.Active_anon_);
-    sscanf(fp = strstr(meminfbuf, "Inactive(anon):"), "Inactive(anon): %lu", &host_data->mem.Inactive_anon_);
-    sscanf(fp = strstr(meminfbuf, "Active(file):"), "Active(file): %lu", &host_data->mem.Active_file_);
-    sscanf(fp = strstr(meminfbuf, "Inactive(file):"), "Inactive(file): %lu", &host_data->mem.Inactive_file_);
-    sscanf(fp = strstr(meminfbuf, "Unevictable:"), "Unevictable: %lu", &host_data->mem.Unevictable);
-    sscanf(fp = strstr(meminfbuf, "Mlocked:"), "Mlocked: %lu", &host_data->mem.Mlocked);
-    sscanf(fp = strstr(meminfbuf, "SwapTotal:"), "SwapTotal: %lu", &host_data->mem.SwapTotal);
-    sscanf(fp = strstr(meminfbuf, "SwapFree:"), "SwapFree: %lu", &host_data->mem.SwapFree);
-    sscanf(fp = strstr(meminfbuf, "Dirty:"), "Dirty: %lu", &host_data->mem.Dirty);
-    sscanf(fp = strstr(meminfbuf, "Writeback:"), "Writeback: %lu", &host_data->mem.Writeback);
-    sscanf(fp = strstr(meminfbuf, "AnonPages:"), "AnonPages: %lu", &host_data->mem.AnonPages);
-    sscanf(fp = strstr(meminfbuf, "Mapped:"), "Mapped: %lu", &host_data->mem.Mapped);
-    sscanf(fp = strstr(meminfbuf, "Shmem:"), "Shmem: %lu", &host_data->mem.Shmem);
-    sscanf(fp = strstr(meminfbuf, "Shmem:"), "Shmem: %lu", &host_data->mem.Shmem);
-    sscanf(fp = strstr(meminfbuf, "Slab:"), "Slab: %lu", &host_data->mem.Slab);
-    sscanf(fp = strstr(meminfbuf, "SReclaimable:"), "SReclaimable: %lu", &host_data->mem.SReclaimable);
-    sscanf(fp = strstr(meminfbuf, "SUnreclaim:"), "SUnreclaim: %lu", &host_data->mem.SUnreclaim);
-    sscanf(fp = strstr(meminfbuf, "KernelStack:"), "KernelStack: %lu", &host_data->mem.KernelStack);
-    sscanf(fp = strstr(meminfbuf, "PageTables:"), "PageTables: %lu", &host_data->mem.PageTables);
-    sscanf(fp = strstr(meminfbuf, "NFS_Unstable:"), "NFS_Unstable: %lu", &host_data->mem.NFS_Unstable);
-    sscanf(fp = strstr(meminfbuf, "Bounce:"), "Bounce: %lu", &host_data->mem.Bounce);
-    sscanf(fp = strstr(meminfbuf, "WritebackTmp:"), "WritebackTmp: %lu", &host_data->mem.WritebackTmp);
-    sscanf(fp = strstr(meminfbuf, "CommitLimit:"), "CommitLimit: %lu", &host_data->mem.CommitLimit);
-    sscanf(fp = strstr(meminfbuf, "Committed_AS:"), "Committed_AS: %lu", &host_data->mem.Committed_AS);
-    sscanf(fp = strstr(meminfbuf, "VmallocTotal:"), "VmallocTotal: %lu", &host_data->mem.VmallocTotal);
-    sscanf(fp = strstr(meminfbuf, "VmallocUsed:"), "VmallocUsed: %lu", &host_data->mem.VmallocUsed);
-    sscanf(fp = strstr(meminfbuf, "VmallocChunk:"), "VmallocChunk: %lu", &host_data->mem.VmallocChunk);
-    sscanf(fp = strstr(meminfbuf, "HardwareCorrupted:"), "HardwareCorrupted: %lu", &host_data->mem.HardwareCorrupted);
-    sscanf(fp = strstr(meminfbuf, "AnonHugePages:"), "AnonHugePages: %lu", &host_data->mem.AnonHugePages);
-    sscanf(fp = strstr(meminfbuf, "HugePages_Total:"), "HugePages_Total: %lu", &host_data->mem.HugePages_Total);
-    sscanf(fp = strstr(meminfbuf, "HugePages_Free:"), "HugePages_Free: %lu", &host_data->mem.HugePages_Free);
-    sscanf(fp = strstr(meminfbuf, "HugePages_Rsvd:"), "HugePages_Rsvd: %lu", &host_data->mem.HugePages_Rsvd);
-    sscanf(fp = strstr(meminfbuf, "HugePages_Surp:"), "HugePages_Surp: %lu", &host_data->mem.HugePages_Surp);
-    sscanf(fp = strstr(meminfbuf, "Hugepagesize:"), "Hugepagesize: %lu", &host_data->mem.Hugepagesize);
-    sscanf(fp = strstr(meminfbuf, "DirectMap4k:"), "DirectMap4k: %lu", &host_data->mem.DirectMap4k);
-    sscanf(fp = strstr(meminfbuf, "DirectMap2M:"), "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
-    sscanf(fp = strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu", &host_data->mem.DirectMap1G);
+    if(fields == NULL) {
+    	fields = malloc(sizeof(char*) * 45); /* 45 field max */
+    	memset(fields, NULL, sizeof(char*) * 45);
+    	fields[MF_MF_MEMTOTAL] = strdup("MemTotal"); /* Always there */
+    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
+    	ADDFLAG(MF_MEMAVAILABLE, "MemAvailable:", meminfbuf, pollflags);
+    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
+    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
+    	ADDFLAG(MF_MEMFREE, "MemFree:", meminfbuf, pollflags);
+
+    	if(strstr(meminfbuf, "MemFree:") != NULL) pollflags |= MF_MEMFREE;
+    	if(strstr(meminfbuf, "MemAvailable:") != NULL) pollflags |= MF_MEMAVAILABLE;
+    	if(strstr(meminfbuf, "Cached:") != NULL) pollflags |= MF_MEMAVAILABLE;
+    	if(strstr(meminfbuf, "SwapCached:") != NULL) pollflags |= MF_SWAPCACHED;
+    	if(strstr(meminfbuf, "Active:") != NULL) pollflags |= MF_ACIVE;
+    	if(strstr(meminfbuf, "Inactive:") != NULL) pollflags |= MF_INACTIVE;
+    	if(strstr(meminfbuf, "Active(anon):") != NULL) pollflags |= MF_ACTIVE_ANON_;
+    	if(strstr(meminfbuf, "Inactive(anon):") != NULL) pollflags |= MF_INACTIVE_ANON_;
+    	if(strstr(meminfbuf, "Active(file):") != NULL) pollflags |= MF_ACTIVE_FILE_;
+    	if(strstr(meminfbuf, "Inactive(file):") != NULL) pollflags |= MF_INACTIVE_FILE_;
+    	if(strstr(meminfbuf, "Unevictable:") != NULL) pollflags |= MF_UNEVICTABLE;
+    	if(strstr(meminfbuf, "Mlocked:") != NULL) pollflags |= MF_MLOCKED;
+    	if(strstr(meminfbuf, "SwapTotal:") != NULL) pollflags |= MF_SWAPTOTAL;
+    	if(strstr(meminfbuf, "SwapFree:") != NULL) pollflags |= MF_SWAPFREE;
+    	if(strstr(meminfbuf, "Dirty:") != NULL) pollflags |= MF_DIRTY;
+    	if(strstr(meminfbuf, "Writeback:") != NULL) pollflags |= MF_WRITEBACK;
+    	if(strstr(meminfbuf, "AnonPages:") != NULL) pollflags |= MF_ANONPAGES;
+    	if(strstr(meminfbuf, "Mapped::") != NULL) pollflags |= MF_MAPPED;
+    	if(strstr(meminfbuf, "Shmem:") != NULL) pollflags |= MF_SHMEM;
+    	if(strstr(meminfbuf, "Slab:") != NULL) pollflags |= MF_SLAB;
+    	if(strstr(meminfbuf, "SReclaimable:") != NULL) pollflags |= MF_SRECLAIMABLE;
+    	if(strstr(meminfbuf, "SUnreclaim:") != NULL) pollflags |= MF_SUNRECLAIM;
+    	if(strstr(meminfbuf, "KernelStack:") != NULL) pollflags |= MF_KERNELSTACK;
+    	if(strstr(meminfbuf, "PageTables:") != NULL) pollflags |= MF_PAGETABLES;
+    	if(strstr(meminfbuf, "NFS_Unstable:") != NULL) pollflags |= MF_NFS_UNSTABLE;
+    	if(strstr(meminfbuf, "WritebackTmp:") != NULL) pollflags |= MF_WRITEBACKTMP;
+    	if(strstr(meminfbuf, "CommitLimit:") != NULL) pollflags |= MF_COMMITLIMIT;
+    	if(strstr(meminfbuf, "Committed_AS:") != NULL) pollflags |= MF_COMMITTED_AS;
+    	if(strstr(meminfbuf, "VmallocTotal:") != NULL) pollflags |= MF_VMALLOCTOTAL;
+    	if(strstr(meminfbuf, "VmallocUsed:") != NULL) pollflags |= MF_VMALLOCUSED;
+    	if(strstr(meminfbuf, "VmallocChunk:") != NULL) pollflags |= MF_VMALLOCCHUNK;
+    	if(strstr(meminfbuf, "HardwareCorrupted:") != NULL) pollflags |= MF_HARDWARECORRUPTED;
+    	if(strstr(meminfbuf, "AnonHugePages:") != NULL) pollflags |= MF_ANONHUGEPAGES;
+    	if(strstr(meminfbuf, "HugePages_Total:") != NULL) pollflags |= MF_HUGEPAGES_TOTAL;
+    	if(strstr(meminfbuf, "HugePages_Free:") != NULL) pollflags |= MF_HUGEPAGES_FREE;
+    	if(strstr(meminfbuf, "HugePages_Rsvd:") != NULL) pollflags |= MF_HUGEPAGES_RSVD;
+    	if(strstr(meminfbuf, "HugePages_Surp:") != NULL) pollflags |= MF_HUGEPAGES_SURP;
+    	if(strstr(meminfbuf, "Hugepagesize:") != NULL) pollflags |= MF_HUGEPAGESIZE;
+    	if(strstr(meminfbuf, "DirectMap4k:") != NULL) pollflags |= MF_DIRECTMAP4K;
+    	if(strstr(meminfbuf, "DirectMap2M:") != NULL) pollflags |= MF_DIRECTMAP2M;
+    	if(strstr(meminfbuf, "DirectMap1G:") != NULL) pollflags |= MF_DIRECTMAP1G;
+    }
+
+    sscanf(strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
+    sscanf(strstr(meminfbuf, "MemFree:"), "MemFree: %lu", &host_data->mem.MemFree);
+    sscanf(strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
+    sscanf(strstr(meminfbuf, "Buffers:"), "Buffers: %lu", &host_data->mem.Buffers);
+    sscanf(strstr(meminfbuf, "Cached:"), "Cached: %lu", &host_data->mem.Cached);
+    sscanf(strstr(meminfbuf, "SwapCached:"), "SwapCached: %lu", &host_data->mem.SwapCached);
+    sscanf(strstr(meminfbuf, "Active:"), "Active: %lu", &host_data->mem.Active);
+    sscanf(strstr(meminfbuf, "Inactive:"), "Inactive: %lu", &host_data->mem.Inactive);
+    sscanf(strstr(meminfbuf, "Active(anon):"), "Active(anon): %lu", &host_data->mem.Active_anon_);
+    sscanf(strstr(meminfbuf, "Inactive(anon):"), "Inactive(anon): %lu", &host_data->mem.Inactive_anon_);
+    sscanf(strstr(meminfbuf, "Active(file):"), "Active(file): %lu", &host_data->mem.Active_file_);
+    sscanf(strstr(meminfbuf, "Inactive(file):"), "Inactive(file): %lu", &host_data->mem.Inactive_file_);
+    sscanf(strstr(meminfbuf, "Unevictable:"), "Unevictable: %lu", &host_data->mem.Unevictable);
+    sscanf(strstr(meminfbuf, "Mlocked:"), "Mlocked: %lu", &host_data->mem.Mlocked);
+    sscanf(strstr(meminfbuf, "SwapTotal:"), "SwapTotal: %lu", &host_data->mem.SwapTotal);
+    sscanf(strstr(meminfbuf, "SwapFree:"), "SwapFree: %lu", &host_data->mem.SwapFree);
+    sscanf(strstr(meminfbuf, "Dirty:"), "Dirty: %lu", &host_data->mem.Dirty);
+    sscanf(strstr(meminfbuf, "Writeback:"), "Writeback: %lu", &host_data->mem.Writeback);
+    sscanf(strstr(meminfbuf, "AnonPages:"), "AnonPages: %lu", &host_data->mem.AnonPages);
+    sscanf(strstr(meminfbuf, "Mapped:"), "Mapped: %lu", &host_data->mem.Mapped);
+    sscanf(strstr(meminfbuf, "Shmem:"), "Shmem: %lu", &host_data->mem.Shmem);
+    sscanf(strstr(meminfbuf, "Slab:"), "Slab: %lu", &host_data->mem.Slab);
+    sscanf(strstr(meminfbuf, "SReclaimable:"), "SReclaimable: %lu", &host_data->mem.SReclaimable);
+    sscanf(strstr(meminfbuf, "SUnreclaim:"), "SUnreclaim: %lu", &host_data->mem.SUnreclaim);
+    sscanf(strstr(meminfbuf, "KernelStack:"), "KernelStack: %lu", &host_data->mem.KernelStack);
+    sscanf(strstr(meminfbuf, "PageTables:"), "PageTables: %lu", &host_data->mem.PageTables);
+    sscanf(strstr(meminfbuf, "NFS_Unstable:"), "NFS_Unstable: %lu", &host_data->mem.NFS_Unstable);
+    sscanf(strstr(meminfbuf, "Bounce:"), "Bounce: %lu", &host_data->mem.Bounce);
+    sscanf(strstr(meminfbuf, "WritebackTmp:"), "WritebackTmp: %lu", &host_data->mem.WritebackTmp);
+    sscanf(strstr(meminfbuf, "CommitLimit:"), "CommitLimit: %lu", &host_data->mem.CommitLimit);
+    sscanf(strstr(meminfbuf, "Committed_AS:"), "Committed_AS: %lu", &host_data->mem.Committed_AS);
+    sscanf(strstr(meminfbuf, "VmallocTotal:"), "VmallocTotal: %lu", &host_data->mem.VmallocTotal);
+    sscanf(strstr(meminfbuf, "VmallocUsed:"), "VmallocUsed: %lu", &host_data->mem.VmallocUsed);
+    sscanf(strstr(meminfbuf, "VmallocChunk:"), "VmallocChunk: %lu", &host_data->mem.VmallocChunk);
+    sscanf(strstr(meminfbuf, "HardwareCorrupted:"), "HardwareCorrupted: %lu", &host_data->mem.HardwareCorrupted);
+    sscanf(strstr(meminfbuf, "AnonHugePages:"), "AnonHugePages: %lu", &host_data->mem.AnonHugePages);
+    sscanf(strstr(meminfbuf, "HugePages_Total:"), "HugePages_Total: %lu", &host_data->mem.HugePages_Total);
+    sscanf(strstr(meminfbuf, "HugePages_Free:"), "HugePages_Free: %lu", &host_data->mem.HugePages_Free);
+    sscanf(strstr(meminfbuf, "HugePages_Rsvd:"), "HugePages_Rsvd: %lu", &host_data->mem.HugePages_Rsvd);
+    sscanf(strstr(meminfbuf, "HugePages_Surp:"), "HugePages_Surp: %lu", &host_data->mem.HugePages_Surp);
+    sscanf(strstr(meminfbuf, "Hugepagesize:"), "Hugepagesize: %lu", &host_data->mem.Hugepagesize);
+    sscanf(strstr(meminfbuf, "DirectMap4k:"), "DirectMap4k: %lu", &host_data->mem.DirectMap4k);
+    sscanf(strstr(meminfbuf, "DirectMap2M:"), "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
+    sscanf(strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu", &host_data->mem.DirectMap1G);
 }
 
 static inline void poll_uptime(sysinf_t *host_data)
