@@ -11,10 +11,10 @@ resolution sampling of data with minimal performance impact for “real-time”
 performance analysis. Default poll interval is 5 seconds. Currently, All-Thing
 consists of:
 
-* A monitoring daemon, written in C, that polls various data on an Linux OS 
-  image. This daemon is very simple and written to limit CPU and I/O activity
-  as much as possible. It has no plug-in architecture or fancy hooks. It cannot
-  be queried or remotely told to change behavior.
+* A monitoring daemon, that polls for various data on a Linux OS image. This
+  daemon is very simple and written to limit CPU and I/O activity as much as
+  possible. It has no plug-in architecture or fancy hooks. It cannot be queried
+  or remotely told to change behavior.
 * A master daemon that listens for reports from monitoring daemons. Data is
   accepted, counters are calculated and data is made available via a simple 
   service that accepts queries for data. There is no authentication for
@@ -25,30 +25,31 @@ consists of:
 I'd love to say that the lack of monitor extensibility, encryption,
 authentication or multi-platform support was all due to some snotty design
 philosophy but really it's just that I don't have the time for it. I may get
-to it as soon as I get Django figured out. 
+to it as soon as I get the web app up and running. Hey, I may even tack it on
+to a message service.
 
 Features:
 
 * Continuous monitoring of nodes limited only by the bandwidth, memory and CPU
   available to the master daemon(s). For practical purposes, this could be tens
   of thousands of nodes. Perhaps hundreds of thousands in beefy environments.
-* Recording of time-series data to a database (PostgreSQL, whatever) according to
-  user configuration. Prototyping to be done with PostgreSQL. Support for other
-  formats will not be at all difficult to implement since database activities 
-  are rather simple and the web app is Django and should be fairly agnostic.
+* Recording of time-series data to a database (PostgreSQL, whatever) according
+  to user configuration. Prototyping to be done with PostgreSQL. Support for
+  other formats will not be at all difficult to implement since database
+  activities are rather simple and the web app is Django and should be fairly
+  agnostic.
 * Elegant, intuitive web application for watching node data in real-time and for
   analyzing historical time-series data on all monitored attributes.
 * Node performance report generating within web application.
 * Data transfer from reporting daemons to master daemon is in JSON format. I
-  though about fancy containers and even binary chunks but I like the
-  flexibility of JSON since I may want to reimpliment the master process in
-  Python.
+  thought about fancy containers and even binary chunks but I like the
+  flexibility of JSON.
 * Data service uses JSON for queries and data transfer. Since the end target
   is a web application, JSON is used everywhere on the wire.
-* cJSON is used on the monitor processes and JANSSON is used on the master
-  process. I'll have to convert the master to cJSON – the reason for this is
-  because JANSSON isn't available on Red Hat and I can include cJSON right in
-  the source.
+* cJSON or jansson can be used on the monitor processes and jansson is used on
+  the master process - cJSON my come to the master soon. Six in one, half-
+  dozen the other. The argument for cJSON is MIT licensing so I can just dump
+  it in the code.
 
 Compared to Ganglia:
 
@@ -77,3 +78,8 @@ Compared to Ganglia:
   developers/scientists can watch their jobs for problems that could impact the
   efficient of their work. I've found that scaling and I/O constraint issues
   often go unnoticed in these environments.
+  
+PCP?
+
+* Use performance co-pilot to performance tune and trouble shoot a system. Use
+  all-thing to watch 1000 nodes at once. In aggregate or side-by-side.
