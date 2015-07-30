@@ -193,6 +193,8 @@ inline static void q_show_stats(int fd, master_global_data_t *dptr)
 	json_decref(jobjbf);
 }
 
+inline static void q_show_mark(int fd) {send(fd, "ahoy!\n\0", 7, 0);}
+
 inline static void q_show_config(int fd, master_global_data_t *dptr)
 {
 	json_t *jobjbf = NULL;
@@ -241,6 +243,7 @@ static int query_handler(int fd, master_global_data_t *dptr)
 		if( strcmp(buf, "list\n") == 0 ) q_list_objs(fd, dptr);
 		if( strcmp(buf, "stats\n") == 0 ) q_show_stats(fd, dptr);
 		if( strcmp(buf, "config\n") == 0 ) q_show_config(fd, dptr);
+		if( strcmp(buf, "MARK\n") == 0 ) q_show_mark(fd);
 
 		/* Query data objects */
 		if( strncmp(buf, "query:", 6) == 0) {

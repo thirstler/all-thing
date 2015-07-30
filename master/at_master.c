@@ -114,7 +114,7 @@ static void clear_config()
 }
 
 /**
- * No implimented yet. Needed.
+ * Not implemented yet. Needed.
  */
 static void reinit(int signal)
 {
@@ -133,36 +133,6 @@ static void clear_data_master(master_global_data_t *data_master)
 	free(data_master);
 }
 
-/*
- * This opens a connection to wherever.
- */
-static int netsock(int proto, char *port, char *listen)
-{
-    struct addrinfo hints;
-    struct addrinfo *res;
-    int rsock = 0;
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = proto;
-    hints.ai_flags = AI_PASSIVE;
-
-    //int rc = getaddrinfo(cfg->listen_addr, cfg->listen_port, &hints, &res);
-    int rc = getaddrinfo(listen, port, &hints, &res);
-    if(rc != 0) return 0;
-
-    rsock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-
-    connect(rsock, res->ai_addr, res->ai_addrlen);
-
-    free(res);
-    free(hints.ai_addr);
-    free(hints.ai_canonname);
-    free(hints.ai_next);
-
-    return rsock;
-}
-
 int main(int argc, char *argv[])
 {
     on = 1;
@@ -174,7 +144,6 @@ int main(int argc, char *argv[])
     pthread_t database_ops;
     int db_retry_sec = RETRY_DB_CONN_SEC;
     time_t loop_time, last_db_con_atempt = 0;
-    int listen_selfie, server_selfie;
 
     master_global_data_t *data_master;
     openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
@@ -308,20 +277,10 @@ int main(int argc, char *argv[])
 
     pthread_mutex_init(&db_queue_ops_mtx, NULL);
 
-    /* Get sockets ready to self trigger the looping threads */
-    listen_selfie = netsock(SOCK_DGRAM, cfg->listen_port,
-    		(strcmp(cfg->listen_addr, "*")==0) ? "127.0.0.1": cfg->listen_addr);
-    server_selfie = netsock(SOCK_STREAM, cfg->server_port,
-    		(strcmp(cfg->server_addr, "*")== 0) ? "127.0.0.1": cfg->server_addr);
-
     /* Main (monitor) loop */
     for(mon_count=0; on; mon_count +=1) {
         usleep(cfg->mon_rate);
         loop_time = time(NULL);
-
-        /* Send a packet to self, keeps the listener loops moving */
-        send(listen_selfie, "MARK\n", 5, 0);
-        send(server_selfie, "MARK\n", 5, 0);
 
         /* retry database connection if necessary */
         if(PQstatus(pgconn) != CONNECTION_OK && ((loop_time - last_db_con_atempt) > db_retry_sec) )
@@ -335,9 +294,6 @@ int main(int argc, char *argv[])
         	last_db_con_atempt = loop_time;
         }
     }
-
-    shutdown (listen_selfie, 2);
-    shutdown (server_selfie, 2);
 
     /* Clean up db agent cache */
     drop_agent_cache();
