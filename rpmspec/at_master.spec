@@ -1,5 +1,5 @@
 Name: all-thing-master
-Version: 0.8.4
+Version: 0.8.5
 Release: 1%{?dist}
 Summary: All thing monitoring collector/server	
  
@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc jansson-devel
-Requires: glibc jansson
+Requires: glibc jansson all-thing-agent
 
 %description
 Monitoring data collection agent and data server.
@@ -26,11 +26,9 @@ mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}/etc
 mkdir -p %{buildroot}/etc/init.d
 cp master/at_master %{buildroot}/usr/sbin/
-cp config/allthing.conf %{buildroot}/etc/
 cp scripts/at_master.rc %{buildroot}/etc/init.d/at_master
 
 %files
-%config(noreplace) %attr(640 root root) /etc/allthing.conf
 %attr(700 root root) /usr/sbin/at_master
 %attr(755 root root) /etc/init.d/at_master
 
@@ -39,6 +37,9 @@ cp scripts/at_master.rc %{buildroot}/etc/init.d/at_master
 chkconfig --add at_master
 
 %changelog
+* Sun Aug 2 2015 <Jason Russler> jason.russler@gmail.com 0.8.5-1
+- Globalize sockets so that they can be closed from the master thread while
+  the clients are blocked waiting for I/O
 * Sun Jul 26 2015 <Jason Russler> jason.russler@gmail.com 0.8.4-1
 - Clean up
 * Tue Oct 28 2014 <Jason Russler> jason.russler@gmail.com 0.8.1-1

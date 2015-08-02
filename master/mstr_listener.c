@@ -234,7 +234,8 @@ static void prune_assmbl_buf(json_str_assembly_bfr_t **assembly_buffer)
 void *report_listener(void *dptr)
 {
     int rc;
-    master_global_data_t *data_master = dptr;
+    listener_in_t *listener_in = dptr;
+    master_global_data_t *data_master = listener_in->master;
 
     /* Message assembly buffer */
     json_str_assembly_bfr_t *asmbl_bfr_list = NULL;  // start of linked-list
@@ -245,7 +246,6 @@ void *report_listener(void *dptr)
     struct addrinfo *servinfo;
     struct sockaddr fromaddr;
     socklen_t fromsz = sizeof(struct sockaddr);
-    int lsock;
 
     uint64_t pktc;
     char recv_buffer[UDP_PAYLOAD_SZ+1];
@@ -269,16 +269,16 @@ void *report_listener(void *dptr)
         exit(1);
     }
 
-    lsock = socket(servinfo->ai_family,
+    listener_in->lsn_socket = socket(servinfo->ai_family,
             servinfo->ai_socktype,
             servinfo->ai_protocol);
 
-    if(lsock < 0) {
+    if(listener_in->lsn_socket < 0) {
         syslog(LOG_ERR, "listener failed to get socket");
         pthread_exit(NULL);
     }
 
-    rc = bind(lsock, servinfo->ai_addr, servinfo->ai_addrlen);
+    rc = bind(listener_in->lsn_socket, servinfo->ai_addr, servinfo->ai_addrlen);
     if(rc < 0) {
         syslog(LOG_ERR, "listener failed to bind to socket");
         pthread_exit(NULL);
@@ -299,7 +299,7 @@ void *report_listener(void *dptr)
     	/* clear the buffer before using it */
         memset(recv_buffer, '\0', UDP_PAYLOAD_SZ+1);
 
-        rc = recvfrom(lsock,
+        rc = recvfrom(listener_in->lsn_socket,
                 (void*)recv_buffer,
                 UDP_PAYLOAD_SZ, 0,
                 &fromaddr, &fromsz);

@@ -277,11 +277,12 @@ static void *get_in_addr(struct sockaddr *sa)
 
 void *server_listener(void *dptr)
 {
-    master_global_data_t *data_master = dptr;
+
+	data_server_in_t *data_srv_in = dptr;
+    master_global_data_t *data_master = data_srv_in->master;
     fd_set master;
     fd_set read_fds;
     int fdmax;
-    int listener;
     int newfd;
     struct sockaddr_storage remoteaddr;
     socklen_t addrlen;
@@ -311,13 +312,13 @@ void *server_listener(void *dptr)
     }
 
     for(p = ai; p != NULL; p = p->ai_next) {
-        listener = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (listener < 0) continue;
+    	data_srv_in->ds_socket = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if (data_srv_in->ds_socket < 0) continue;
 
-        setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+        setsockopt(data_srv_in->ds_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
 
-        if (bind(listener, p->ai_addr, p->ai_addrlen) < 0) {
-            close(listener);
+        if (bind(data_srv_in->ds_socket, p->ai_addr, p->ai_addrlen) < 0) {
+            close(data_srv_in->ds_socket);
             continue;
         }
         break;
@@ -330,14 +331,14 @@ void *server_listener(void *dptr)
 
     freeaddrinfo(ai);
 
-    if (listen(listener, 10) == -1) {
+    if (listen(data_srv_in->ds_socket, 10) == -1) {
         perror("listen");
         pthread_exit(NULL);
     }
 
-    FD_SET(listener, &master);
+    FD_SET(data_srv_in->ds_socket, &master);
 
-    fdmax = listener;
+    fdmax = data_srv_in->ds_socket;
 
     while(on) {
         read_fds = master;
@@ -348,9 +349,9 @@ void *server_listener(void *dptr)
 
         for(i = 0; i <= fdmax; i++) {
             if (FD_ISSET(i, &read_fds)) {
-                if (i == listener) {
+                if (i == data_srv_in->ds_socket) {
                     addrlen = sizeof remoteaddr;
-                    newfd = accept(listener,
+                    newfd = accept(data_srv_in->ds_socket,
                         (struct sockaddr *)&remoteaddr,
                         &addrlen);
 

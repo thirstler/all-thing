@@ -24,18 +24,18 @@ consists of:
   
 I'd love to say that the lack of monitor extensibility, encryption,
 authentication or multi-platform support was all due to some snotty design
-philosophy but really it's just that I don't have the time for it. I may get
-to it as soon as I get Django figured out. 
+philosophy but really it's just that I don't have the time for it right now.
 
 Features:
 
 * Continuous monitoring of nodes limited only by the bandwidth, memory and CPU
   available to the master daemon(s). For practical purposes, this could be tens
   of thousands of nodes. Perhaps hundreds of thousands in beefy environments.
-* Recording of time-series data to a database (PostgreSQL, whatever) according to
-  user configuration. Prototyping to be done with PostgreSQL. Support for other
-  formats will not be at all difficult to implement since database activities 
-  are rather simple and the web app is Django and should be fairly agnostic.
+* Recording of time-series data to a database (PostgreSQL, whatever) according
+  to user configuration. Prototyping to be done with PostgreSQL. Support for
+  other formats will not be at all difficult to implement since database
+  activities are rather simple and the web app is Django and should be fairly
+  agnostic.
 * Elegant, intuitive web application for watching node data in real-time and for
   analyzing historical time-series data on all monitored attributes.
 * Node performance report generating within web application.
@@ -47,7 +47,7 @@ Features:
   is a web application, JSON is used everywhere on the wire.
 * cJSON is used on the monitor processes and JANSSON is used on the master
   process. I'll have to convert the master to cJSON – the reason for this is
-  because JANSSON isn't available on Red Hat and I can include cJSON right in
+  because JANSSON isn't available on Red Hat 6 and I can include cJSON right in
   the source.
 
 Compared to Ganglia:
@@ -75,5 +75,5 @@ Compared to Ganglia:
 * Use cases will be different. This is simply a real-time monitor for lots of
   hosts. This makes it great for scientific and HPC environments where
   developers/scientists can watch their jobs for problems that could impact the
-  efficient of their work. I've found that scaling and I/O constraint issues
+  efficiency of their work. I've found that scaling and I/O constraint issues
   often go unnoticed in these environments.

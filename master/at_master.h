@@ -207,6 +207,17 @@ typedef struct master_global_data_s {
 } master_global_data_t;
 
 
+typedef struct data_server_in_s {
+	master_global_data_t *master;
+	int ds_socket;
+} data_server_in_t;
+
+typedef struct listener_in_s {
+	master_global_data_t *master;
+	int lsn_socket;
+} listener_in_t;
+
+
 /******************************************************************************
  * Report and server listener threads ****************************************/
 void *report_listener(void *dptr);

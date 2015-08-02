@@ -46,7 +46,7 @@ install-master: at_master
 
 
 # For creating tarballs for SRPM generation, increment with SPEC file
-VER=0.8.4
+VER=0.8.5
 
 srcrpms: at_agent-tar at_master-tar
 	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_agent.spec

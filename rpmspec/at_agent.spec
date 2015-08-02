@@ -1,5 +1,5 @@
 Name: all-thing-agent
-Version: 0.8.4
+Version: 0.8.5
 Release: 1%{?dist}
 Summary: All thing monitoring agent	
  
@@ -39,6 +39,8 @@ cp scripts/at_agent.rc %{buildroot}/etc/init.d/at_agent
 chkconfig --add /etc/init.d/at_agent
 
 %changelog
+* Sun Aug 2 2015 <Jason Russler> jason.russler@gmail.com 0.8.5-1
+- Updates to master, nothing for the agent
 * Sun Jul 26 2015 <Jason Russler> jason.russler@gmail.com 0.8.4-1
 - Fixed some issues with stat() on ISO9660 file systems
 - Added selector for parsing meminfo since some of that is a little

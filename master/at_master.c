@@ -94,6 +94,11 @@ static void set_cfg_defaults(master_config_t* cfg)
     cfg->log_level = DEFAULT_LOG_LEVEL;
 }
 
+static void reinit(int sig)
+{
+	/* not implemented */
+}
+
 static void quitit(int sig)
 {
     printf("exit requested\n");
@@ -113,13 +118,6 @@ static void clear_config()
     free(cfg);
 }
 
-/**
- * Not implemented yet. Needed.
- */
-static void reinit(int signal)
-{
-
-}
 
 static void clear_data_master(master_global_data_t *data_master)
 {
@@ -144,6 +142,8 @@ int main(int argc, char *argv[])
     pthread_t database_ops;
     int db_retry_sec = RETRY_DB_CONN_SEC;
     time_t loop_time, last_db_con_atempt = 0;
+    data_server_in_t data_server_in;
+    listener_in_t listener_in;
 
     master_global_data_t *data_master;
     openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
@@ -268,10 +268,16 @@ int main(int argc, char *argv[])
     mk_cache_tbl();
 
     /* Spin-off threads */
+
+    data_server_in.master = data_master;
+    data_server_in.ds_socket = -1;
+    listener_in.master = data_master;
+    listener_in.lsn_socket = -1;
+
     rc = pthread_create(
-            &node_listen, NULL, report_listener, (void*) data_master);
+            &node_listen, NULL, report_listener, (void*) &listener_in);
     rc = pthread_create(
-            &data_server, NULL, server_listener, (void*) data_master);
+            &data_server, NULL, server_listener, (void*) &data_server_in);
     rc = pthread_create(
             &database_ops, NULL, database_ops_queue, (void*) data_master);
 
@@ -294,6 +300,10 @@ int main(int argc, char *argv[])
         	last_db_con_atempt = loop_time;
         }
     }
+
+    /* Stop the loops! */
+    shutdown(data_server_in.ds_socket, SHUT_RDWR);
+    shutdown(listener_in.lsn_socket, SHUT_RDWR);
 
     /* Clean up db agent cache */
     drop_agent_cache();
