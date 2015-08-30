@@ -1,0 +1,36 @@
+###############################################################################
+# Configuration specific to the at_master daemon
+###############################################################################
+[master]
+
+# User to run at_master as
+runuser = allthing
+
+# Address to listen on for agent reports
+report_listen_addr = *
+
+# Address to listen on for data queries
+server_listen_addr = *
+
+# mon_loop_rate is in microseconds. There's no reason to change this 
+mon_loop_rate = 1000000
+
+# Log levels are cumulative
+# 1 - 7 
+log_level = 4
+
+# Commit prformance data to time-series storage every n seconds:
+commit_to_db = 300
+
+
+###############################################################################
+# Database configuration
+###############################################################################
+[database]
+
+# Server software
+hostname = 127.0.0.1
+port = 5432
+username = allthing
+password = allthing
+database = allthing

@@ -1,15 +1,33 @@
 /*
- * at_agent.h
+ * File: at.h
+ * Desc: Shared header file for agent and master source trees. Defines some
+ *       common data structures.
  *
- *  Created on: Feb 10, 2014
- *      Author: jrussler
+ * copyright 2015 Jason Russler
+ *
+ * This file is part of AllThing.
+ *
+ * AllThing is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AllThing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.*Z
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AllThing.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef AT_H_
 #define AT_H_
 
 /* Default configuration values */
-#define DEFAULT_CONFIG "/etc/allthing.conf"
+
+/* Config dir WITH trailing slash :-) */
+#define DEFAULT_CONFIG_DIR "/etc/allthing/"
 #define DEFAULT_RUNUSER "root"
 #define DEFAULT_REPORT_PORT "3456"
 #define DEFAULT_LOG_LEVEL 4
@@ -102,8 +120,8 @@ typedef struct fsinf_s {
 } fsinf_t;
 
 typedef struct memval_s {
-	uint64_t val;
-	char unit[4];
+    uint64_t val;
+    char unit[4];
 } memval_t;
 
 typedef struct meminf_s {

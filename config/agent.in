@@ -1,0 +1,38 @@
+##############################################################################
+# Configuration specific to the at_agent daemon
+###############################################################################
+[agent]
+runuser = allthing
+
+# Agent master poll rate in microseconds
+master_poll_rate = 5000000
+
+# Log levels are cumulative
+# 1 - 7 
+log_level = 4
+
+# Message chunk size. Adjust according to taste, total packet size should
+# probably be less than any MTUs the packets need to traverse
+msg_send_size = 1024 
+
+# Multipliers specify the Nth poll on which to collect and report the
+# associated data. For instance, a multiplier of 10 will trigger a report every
+# 50 seconds when the poll rate is set to 5 sec (5000000 microseconds). A
+# multiplier of 1 (one) means that a poll for that item will trigger on every
+# poll in the poll rate (every 5 seconds if the master_poll_rate is set to
+# 5000000 microseconds).
+cpu.poll_mult = 1
+cpus_static.poll_mult = 120
+memory.poll_mult = 1
+diskio.poll_mult = 1
+netio.poll_mult = 1
+uptime.poll_mult = 60
+sysload.poll_mult = 1
+fs.poll_mult = 60
+metadata.poll_mult = 120
+
+# Metadata for this node if desired.
+location = default
+contact = root@localhost
+group = default
+

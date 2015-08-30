@@ -1,3 +1,25 @@
+/*
+ * File: at_agent.h
+ * Desc: header for all at_agent related srouce files
+ *
+ * copyright 2015 Jason Russler
+ *
+ * This file is part of AllThing.
+ *
+ * AllThing is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AllThing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.*Z
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AllThing.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef AT_AGENT_H_
 #define AT_AGENT_H_
 
@@ -20,6 +42,8 @@
 #define RPRT_CPU_SSTATIC 0x00000080
 #define RPRT_METADATA    0x00000100
 
+#define ALLTHING_CONFIG_FILE "allthing.conf"
+#define AGENT_CONFIG_FILE "agent.conf"
 #define AGENT_PROFILE_DIR "/var/db/allthing"
 #define AGENT_HOSTID_FILE "host_id"
 
@@ -78,7 +102,7 @@ typedef struct agent_config_s {
     char *location;
     char *contact;
     char *runuser;
-    char *config_file;
+    char *config_dir;
     char daemon;
     int log_level;
     u_int msg_chunk_sz;

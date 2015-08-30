@@ -1,3 +1,25 @@
+/*
+ * File: mstr_listener.c
+ * Desc: Thread entry for node data listener and supporting functions
+ *
+ * copyright 2015 Jason Russler
+ *
+ * This file is part of AllThing.
+ *
+ * AllThing is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AllThing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.*Z
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AllThing.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -25,12 +47,12 @@ int asmblerr;
 #ifdef DDEBUG
 static size_t get_ab_lll(json_str_assembly_bfr_t *ll)
 {
-	size_t count=0;
-	while(ll != NULL) {
-		ll = ll->next;
-		count += 1;
-	}
-	return count;
+    size_t count=0;
+    while(ll != NULL) {
+        ll = ll->next;
+        count += 1;
+    }
+    return count;
 }
 #endif
 
@@ -45,7 +67,7 @@ static json_str_assembly_bfr_t* destroy_assmbl_buf(
         if(ab->id == id) {
             if(prev == NULL) {
                 /* first item! (could be only) */
-            	ph = ab->next;
+                ph = ab->next;
             } else {
                 /* everywhere else (could be last) */
                 prev->next = ab->next;
@@ -124,8 +146,8 @@ static inline json_str_assembly_bfr_t* get_assmbl_buf(
     while(bfrptr != NULL) {
         if(hdr->hostid == bfrptr->id) {
             if(hdr->msgid == bfrptr->msgid) {
-            	asmblerr = ASMBL_BUFFER_FOUND;
-            	return bfrptr;
+                asmblerr = ASMBL_BUFFER_FOUND;
+                return bfrptr;
             } else {
                 /* Message mix-up! */
                 asmblerr = ASMBL_BUFFER_BAD_MSG;
@@ -158,58 +180,58 @@ static void apply_assmb_buf(
         json_str_assembly_bfr_t *assembly_buffer,
         master_global_data_t *data_master)
 {
-	json_error_t error;
-	obj_rec_t *standing;
-	obj_rec_t *incomming = malloc(sizeof(obj_rec_t));
-	time_t nownow = time(NULL);
-	const char *rate_list[] = CALC_RATE_KEYS;
+    json_error_t error;
+    obj_rec_t *standing;
+    obj_rec_t *incomming = malloc(sizeof(obj_rec_t));
+    time_t nownow = time(NULL);
+    const char *rate_list[] = CALC_RATE_KEYS;
 
-	incomming->record = json_loads(assembly_buffer->json_str, 0, &error);
+    incomming->record = json_loads(assembly_buffer->json_str, 0, &error);
 
     if(incomming->record == NULL) {
-    	syslog(LOG_WARNING,
-    			"failed to parse JSON string from node id %lx, message id %lx",
-    			assembly_buffer->id, assembly_buffer->msgid);
-    	free(incomming);
-    	return;
+        syslog(LOG_WARNING,
+                "failed to parse JSON string from node id %lx, message id %lx",
+                assembly_buffer->id, assembly_buffer->msgid);
+        free(incomming);
+        return;
     }
     incomming->id = assembly_buffer->id;
 
     syslog(LOG_DEBUG, "successfully encoded JSON object with id %lx",
-    		incomming->id);
+            incomming->id);
 
     if(incomming->id == 0) goto cleanup;
 
     standing = get_obj_rec(incomming->id, data_master);
 
-	if(standing == NULL) {
-		add_obj_rec(data_master, incomming);
-		/* Write to cache in-line (no queue) when it's a first occurrence */
-		write_agent_to_cache(incomming, 1);
-		init_record_tbl(incomming);
-		//printf("%s\n", json_dumps(incomming->record, JSON_INDENT(2)));
-	} else {
+    if(standing == NULL) {
+        add_obj_rec(data_master, incomming);
+        /* Write to cache in-line (no queue) when it's a first occurrence */
+        write_agent_to_cache(incomming, 1);
+        init_record_tbl(incomming);
+        //printf("%s\n", json_dumps(incomming->record, JSON_INDENT(2)));
+    } else {
 
-		json_object_set_new(standing->record, "rates",
-				get_these_rates(standing->record, incomming->record,
-						rate_list, 4));
-		json_object_update(standing->record, incomming->record);
-		free_obj_rec(incomming);
+        json_object_set_new(standing->record, "rates",
+                get_these_rates(standing->record, incomming->record,
+                        rate_list, 4));
+        json_object_update(standing->record, incomming->record);
+        free_obj_rec(incomming);
 
-		cache_update_to_db_ops_queue(standing, data_master->data_ops_queue);
+        cache_update_to_db_ops_queue(standing, data_master->data_ops_queue);
 
-		if( (nownow - standing->last_commit) >= standing->commit_rate ) {
-			standing->last_commit = nownow;
-			db_commit_to_db_ops_queue(standing, data_master->data_ops_queue);
-		}
-	}
+        if( (nownow - standing->last_commit) >= standing->commit_rate ) {
+            standing->last_commit = nownow;
+            db_commit_to_db_ops_queue(standing, data_master->data_ops_queue);
+        }
+    }
 
-	return;
+    return;
 
-	cleanup:
-	syslog(LOG_WARNING, "failed to process valid JSON object with id %lx",
-			incomming->id);
-	free_obj_rec(incomming);
+    cleanup:
+    syslog(LOG_WARNING, "failed to process valid JSON object with id %lx",
+            incomming->id);
+    free_obj_rec(incomming);
     return;
 }
 
@@ -260,8 +282,8 @@ void *report_listener(void *dptr)
 
     /* Set wild card address*/
     if( strcmp(cfg->listen_addr, "*") == 0) {
-    	free(cfg->listen_addr);
-    	cfg->listen_addr = strdup("0.0.0.0");
+        free(cfg->listen_addr);
+        cfg->listen_addr = strdup("0.0.0.0");
     }
 
     if ((rc = getaddrinfo(cfg->listen_addr, cfg->listen_port, &hints, &servinfo)) != 0) {
@@ -296,7 +318,7 @@ void *report_listener(void *dptr)
     pktc=0;
     while(on) {
 
-    	/* clear the buffer before using it */
+        /* clear the buffer before using it */
         memset(recv_buffer, '\0', UDP_PAYLOAD_SZ+1);
 
         rc = recvfrom(listener_in->lsn_socket,
@@ -312,17 +334,17 @@ void *report_listener(void *dptr)
             this_asmbl_buf = get_assmbl_buf(&pkt_hdr, asmbl_bfr_list);
             if(asmblerr != ASMBL_BUFFER_FOUND) {
 
-            	/* host ID not found in buffer, must need a new one */
-            	if(asmblerr == ASMBL_BUFFER_NOT_FOUND) {
-            		this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &asmbl_bfr_list);
+                /* host ID not found in buffer, must need a new one */
+                if(asmblerr == ASMBL_BUFFER_NOT_FOUND) {
+                    this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &asmbl_bfr_list);
 
-            	/* out-of-order message ID, dump current buffer and start a
-            	 * new one */
-            	} else if(asmblerr == ASMBL_BUFFER_BAD_MSG) {
-            		asmbl_bfr_list = destroy_assmbl_buf(
-            								pkt_hdr.hostid, asmbl_bfr_list);
-            		this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &asmbl_bfr_list);
-            	}
+                /* out-of-order message ID, dump current buffer and start a
+                 * new one */
+                } else if(asmblerr == ASMBL_BUFFER_BAD_MSG) {
+                    asmbl_bfr_list = destroy_assmbl_buf(
+                                            pkt_hdr.hostid, asmbl_bfr_list);
+                    this_asmbl_buf = new_assmbl_buf(&pkt_hdr, &asmbl_bfr_list);
+                }
 
             }
 
@@ -332,30 +354,30 @@ void *report_listener(void *dptr)
                     (strstr(recv_buffer, "\n")+1),
                     this_asmbl_buf) == ASMBL_BUFFER_COMPLETE) {
 
-            	/* apply buffered message to data struct */
+                /* apply buffered message to data struct */
                 apply_assmb_buf(this_asmbl_buf, data_master);
 
                 /* clean up assembly buffer for this message */
                 asmbl_bfr_list = destroy_assmbl_buf(
-                						pkt_hdr.hostid, asmbl_bfr_list);
+                                        pkt_hdr.hostid, asmbl_bfr_list);
             }
 
             if( (pktc % ASMBL_BUF_PRUNE_COUNT) == 0)
                 prune_assmbl_buf(&asmbl_bfr_list);
 
         } else if (strncmp(recv_buffer, "MARK", 4) == 0) {
-        	continue;
+            continue;
         } else if(sscanf(recv_buffer, "<<%s exited>>", strbuf) == 1) {
             syslog(LOG_INFO, "host ID %s has stopped its agent\n", strbuf);
         }  else {
-        	syslog(LOG_DEBUG, "foreign packet dropped");
+            syslog(LOG_DEBUG, "foreign packet dropped");
         }
         pktc +=1;
     }
 
     while(asmbl_bfr_list != NULL)
-    	asmbl_bfr_list = destroy_assmbl_buf(
-    									asmbl_bfr_list->id, asmbl_bfr_list);
+        asmbl_bfr_list = destroy_assmbl_buf(
+                                        asmbl_bfr_list->id, asmbl_bfr_list);
 
     syslog(LOG_CRIT, "node listener thread exited");
     pthread_exit(NULL);

@@ -1,3 +1,25 @@
+/*
+ * File: at_master.h
+ * Desc: Header for source files related to the at_master target
+ *
+ * copyright 2015 Jason Russler
+ *
+ * This file is part of AllThing.
+ *
+ * AllThing is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AllThing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.*Z
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AllThing.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef AT_MASTER_H_
 #define AT_MASTER_H_
 
@@ -12,6 +34,7 @@
 #define DEFAULT_DB_HOST "localhost"
 #define DEFAULT_DB_PORT "5432"
 #define RETRY_DB_CONN_SEC 10
+#define MAX_QUERY_LEN 65536
 
 /*
  * Default root-level keys to try and calculate data rates in.
@@ -142,7 +165,7 @@ Arguments:\n\
   -p, --port=PORT       change node-listening port\n\
   -s, --server=PORT     change port for data service\n\
   -r, --monitor=RATE    change monitoring rate\n\
-  -c, --config=FILE     get configuration from specified file\n\
+  -c, --config=FILE     set configuration directory\n\
   -d, --debug=LEVEL     specify a debug level (0-7)\n\
 \n\
 "
@@ -153,7 +176,7 @@ typedef struct master_config_s {
     char listen_port[7];
     char *server_addr;
     char server_port[7];
-    char config_file[255];
+    char config_dir[255];
     char runuser[255];
     char daemon;
     int rprt_hndlrs;
@@ -189,32 +212,32 @@ typedef struct rprt_hdr_s {
 } rprt_hdr_t;
 
 typedef struct obj_rec_s {
-	uint64_t id;
-	time_t commit_rate;
-	time_t last_commit;
-	json_t *record;
+    uint64_t id;
+    time_t commit_rate;
+    time_t last_commit;
+    json_t *record;
 } obj_rec_t;
 
 typedef struct data_op {
-	int type;
-	void *record;
+    int type;
+    void *record;
 } data_op_t;
 
 typedef struct master_global_data_s {
-	obj_rec_t **obj_rec;
+    obj_rec_t **obj_rec;
     size_t obj_rec_sz;
     data_op_t data_ops_queue[16384];
 } master_global_data_t;
 
 
 typedef struct data_server_in_s {
-	master_global_data_t *master;
-	int ds_socket;
+    master_global_data_t *master;
+    int ds_socket;
 } data_server_in_t;
 
 typedef struct listener_in_s {
-	master_global_data_t *master;
-	int lsn_socket;
+    master_global_data_t *master;
+    int lsn_socket;
 } listener_in_t;
 
 
@@ -253,10 +276,10 @@ int calc_rates_linux(json_t *standing, json_t *incomming);
  * Rate calculation
  */
 json_t* get_these_rates(
-		json_t *standing,
-		json_t *incomming,
-		const char *fields[],
-		size_t num_fields);
+        json_t *standing,
+        json_t *incomming,
+        const char *fields[],
+        size_t num_fields);
 
 /*
  * Build connection string and connect (eats values from cfg)

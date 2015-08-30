@@ -1,3 +1,25 @@
+/*
+ * File: at_master.c
+ * Desc: Main for all-thing master server
+ *
+ * copyright 2015 Jason Russler
+ *
+ * This file is part of AllThing.
+ *
+ * AllThing is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AllThing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.*Z
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AllThing.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -47,10 +69,10 @@ static int config_handler(
 
         if(strcmp(name, "commit_to_db") == 0)
             cfg->def_commit_rate = atoi(value);
-    	if(strcmp(name, "report_listen_addr") == 0)
-    		cfg->listen_addr = strdup(value);
-    	if(strcmp(name, "server_listen_addr") == 0)
-    	    cfg->server_addr = strdup(value);
+        if(strcmp(name, "report_listen_addr") == 0)
+            cfg->listen_addr = strdup(value);
+        if(strcmp(name, "server_listen_addr") == 0)
+            cfg->server_addr = strdup(value);
         if(strcmp(name, "mon_loop_rate") == 0)
             cfg->mon_rate = atoi(value);
         if(strcmp(name, "runuser") == 0){
@@ -61,7 +83,7 @@ static int config_handler(
         if(strcmp(name, "log_level") == 0) {
             cfg->log_level = atoi(value);
             if(cfg->log_level < 0 || cfg->log_level > 7) {
-            	cfg->log_level = DEFAULT_LOG_LEVEL;
+                cfg->log_level = DEFAULT_LOG_LEVEL;
             }
         }
         if(strcmp(name, "default_commit_rate") == 0)
@@ -70,12 +92,12 @@ static int config_handler(
 
     /* This info is only held until the db connection is established */
     if(strcmp(section, "database") == 0) {
-		if(strcmp(name, "hostname") == 0)   cfg->db_host = strdup(value);
-		if(strcmp(name, "port") == 0)       cfg->db_port = strdup(value);
-		if(strcmp(name, "username") == 0)   cfg->db_user = strdup(value);
-		if(strcmp(name, "password") == 0)   cfg->db_pw = strdup(value);
-		if(strcmp(name, "database") == 0)   cfg->db_db = strdup(value);
-	}
+        if(strcmp(name, "hostname") == 0)   cfg->db_host = strdup(value);
+        if(strcmp(name, "port") == 0)       cfg->db_port = strdup(value);
+        if(strcmp(name, "username") == 0)   cfg->db_user = strdup(value);
+        if(strcmp(name, "password") == 0)   cfg->db_pw = strdup(value);
+        if(strcmp(name, "database") == 0)   cfg->db_db = strdup(value);
+    }
     return 1;
 }
 
@@ -87,7 +109,7 @@ static void set_cfg_defaults(master_config_t* cfg)
     cfg->mon_rate = DEFAULT_MASTER_MON_RATE;
     cfg->def_commit_rate = DEFAULT_DB_COMMIT_RATE;
     strcpy(cfg->runuser, DEFAULT_RUNUSER);
-    strcpy(cfg->config_file, DEFAULT_CONFIG);
+    strcpy(cfg->config_dir, DEFAULT_CONFIG_DIR);
     strcpy(cfg->server_port, DEFAULT_SERVER_PORT);
     strcpy(cfg->listen_port, DEFAULT_REPORT_PORT);
     cfg->daemon = 1;
@@ -96,7 +118,7 @@ static void set_cfg_defaults(master_config_t* cfg)
 
 static void reinit(int sig)
 {
-	/* not implemented */
+    /* not implemented */
 }
 
 static void quitit(int sig)
@@ -110,25 +132,25 @@ static void quitit(int sig)
 
 static void clear_config()
 {
-	if(cfg->listen_addr != NULL) free(cfg->listen_addr);
-	if(cfg->server_addr != NULL) free(cfg->server_addr);
-	if(cfg->db_db != NULL) free(cfg->db_db);
-	if(cfg->db_host != NULL) free(cfg->db_host);
-	if(cfg->db_port != NULL) free(cfg->db_port);
+    if(cfg->listen_addr != NULL) free(cfg->listen_addr);
+    if(cfg->server_addr != NULL) free(cfg->server_addr);
+    if(cfg->db_db != NULL) free(cfg->db_db);
+    if(cfg->db_host != NULL) free(cfg->db_host);
+    if(cfg->db_port != NULL) free(cfg->db_port);
     free(cfg);
 }
 
 
 static void clear_data_master(master_global_data_t *data_master)
 {
-	size_t i = 0;
+    size_t i = 0;
 
-	if(data_master == NULL) return;
-	for(i = 0; i < data_master->obj_rec_sz; i += 1) {
-		free_obj_rec(data_master->obj_rec[i]);
-	}
-	if(data_master->obj_rec != NULL) free(data_master->obj_rec);
-	free(data_master);
+    if(data_master == NULL) return;
+    for(i = 0; i < data_master->obj_rec_sz; i += 1) {
+        free_obj_rec(data_master->obj_rec[i]);
+    }
+    if(data_master->obj_rec != NULL) free(data_master->obj_rec);
+    free(data_master);
 }
 
 int main(int argc, char *argv[])
@@ -144,6 +166,8 @@ int main(int argc, char *argv[])
     time_t loop_time, last_db_con_atempt = 0;
     data_server_in_t data_server_in;
     listener_in_t listener_in;
+    char master_config[255];
+    char global_config[255];
 
     master_global_data_t *data_master;
     openlog("at_master", LOG_CONS|LOG_PERROR, LOG_USER);
@@ -155,9 +179,16 @@ int main(int argc, char *argv[])
     memset(cfg, 0, sizeof(master_config_t));
     set_cfg_defaults(cfg);
 
+    /* Get file names set */
+    sprintf(global_config, "%s%s", cfg->config_dir, "allthing.conf");
+    sprintf(master_config, "%s%s", cfg->config_dir, "master.conf");
+
     /* Now overwrite with config file */
-    if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
-        syslog(LOG_ERR, "Can't load '%s'\n", cfg->config_file);
+    if (ini_parse(global_config, config_handler, cfg) < 0) {
+        syslog(LOG_ERR, "Can't load '%s'\n", global_config);
+    }
+    if (ini_parse(master_config, config_handler, cfg) < 0) {
+        syslog(LOG_ERR, "Can't load '%s'\n", master_config);
     }
 
     /* See what the command line has to say.... */
@@ -173,9 +204,9 @@ int main(int argc, char *argv[])
         case 'd':
             cfg->log_level = atoi(optarg);
             if(cfg->log_level < 0 || cfg->log_level > 7) {
-            	fprintf(stderr,
-            			"log-level makes no sense, setting to LOG_WARN\n");
-            	cfg->log_level = 4;
+                fprintf(stderr,
+                        "log-level makes no sense, setting to LOG_WARN\n");
+                cfg->log_level = 4;
             }
             break;
         case 'p':
@@ -185,11 +216,14 @@ int main(int argc, char *argv[])
             cfg->mon_rate = atoi(optarg)*1000000;
             break;
         case 'c':
-            strcpy(cfg->config_file, optarg);
-            /* Ok, we're doing this again (order is important!) */
-            if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
-                syslog(LOG_ERR, "Can't load '%s'", cfg->config_file);
-            }
+            strcpy(cfg->config_dir, optarg);
+			/* Ok, we're doing this again (order is important!) */
+			if (ini_parse(global_config, config_handler, cfg) < 0) {
+				syslog(LOG_ERR, "Can't load '%s'\n", global_config);
+			}
+			if (ini_parse(master_config, config_handler, cfg) < 0) {
+				syslog(LOG_ERR, "Can't load '%s'\n", master_config);
+			}
             break;
         case '?':
             syslog(LOG_ERR, "argument expected");
@@ -243,7 +277,7 @@ int main(int argc, char *argv[])
     syslog(LOG_CRIT, "starting up with log level %d (%x)", cfg->log_level, rc);
 
     /* Handle some signals */
-	if (signal(SIGINT, quitit) == SIG_IGN)  signal (SIGINT, SIG_IGN);
+    if (signal(SIGINT, quitit) == SIG_IGN)  signal (SIGINT, SIG_IGN);
     if (signal(SIGTERM, quitit) == SIG_IGN) signal (SIGTERM, SIG_IGN);
     if (signal(SIGHUP, reinit) == SIG_IGN)  signal (SIGHUP, SIG_IGN);
 
@@ -258,7 +292,7 @@ int main(int argc, char *argv[])
     pgconn = db_connect(cfg);
 
     if(PQstatus(pgconn) != CONNECTION_OK) {
-    	syslog(LOG_ERR, "failed to connect to database but I'll keep going...");
+        syslog(LOG_ERR, "failed to connect to database but I'll keep going...");
     }
 
     /* Clean-up in case of unclean shutdown */
@@ -291,13 +325,13 @@ int main(int argc, char *argv[])
         /* retry database connection if necessary */
         if(PQstatus(pgconn) != CONNECTION_OK && ((loop_time - last_db_con_atempt) > db_retry_sec) )
         {
-        	pgconn = db_connect(cfg);
-        	if(PQstatus(pgconn) == CONNECTION_OK) {
-        		syslog(LOG_INFO, "successfully connected to database");
-			} else {
-				syslog(LOG_DEBUG, "failed to reconnect to database");
-			}
-        	last_db_con_atempt = loop_time;
+            pgconn = db_connect(cfg);
+            if(PQstatus(pgconn) == CONNECTION_OK) {
+                syslog(LOG_INFO, "successfully connected to database");
+            } else {
+                syslog(LOG_DEBUG, "failed to reconnect to database");
+            }
+            last_db_con_atempt = loop_time;
         }
     }
 

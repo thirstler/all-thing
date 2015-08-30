@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc
-Requires: glibc jansson
+Requires: glibc jansson /bin/cat /bin/mkdir/bin/cp
 
 %description
 Monitoring agent for the All-Thing HPC monitoring system
@@ -25,18 +25,23 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}/etc
 mkdir -p %{buildroot}/etc/init.d
+mkdir -p %{buildroot}/usr/share/allthing/config
 cp agent/at_agent %{buildroot}/usr/sbin/
 cp config/allthing.conf %{buildroot}/etc/
+cp config/agent.in %{buildroot}/usr/share/allthing/config/
 cp scripts/at_agent.rc %{buildroot}/etc/init.d/at_agent
 
 %files
 %config(noreplace) %attr(640 root root) /etc/allthing.conf
 %attr(700 root root) /usr/sbin/at_agent
 %attr(755 root root) /etc/init.d/at_agent
+%attr(644 root root) /usr/share/allthing/config/agent.in
 
 %post
 /usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin -M allthing
-chkconfig --add /etc/init.d/at_agent
+/sbin/chkconfig --add /etc/init.d/at_agent
+grep '\[agent\]' /etc/allthing.conf &> /dev/null || cat /usr/share/allthing/config/agent.in >> /etc/allthing.conf
+rm -f /tmp/agent.in
 
 %changelog
 * Sun Aug 2 2015 <Jason Russler> jason.russler@gmail.com 0.8.5-1

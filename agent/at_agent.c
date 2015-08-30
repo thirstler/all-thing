@@ -1,3 +1,25 @@
+/*
+ * File: at_agent.c
+ * Desc: main for agent processes
+ *
+ * copyright 2015 Jason Russler
+ *
+ * This file is part of AllThing.
+ *
+ * AllThing is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AllThing is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.*Z
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AllThing.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -81,7 +103,7 @@ static void set_cfg_defaults(agent_config_t* cfg)
     cfg->fs_mult = DEFAULT_FS_MULT;
     cfg->metadata_mult = DEFAULT_METADATA_MULT;
     cfg->runuser = strdup(DEFAULT_RUNUSER);
-    cfg->config_file = strdup(DEFAULT_CONFIG);
+    cfg->config_dir = strdup(DEFAULT_CONFIG_DIR);
     cfg->location = NULL;
     cfg->contact = NULL;
     cfg->group = NULL;
@@ -123,13 +145,13 @@ static void init_hostdata(sysinf_t *host_data)
 
 static inline const char* get_mem_val(const char *key, memval_t* val, const char *strptr)
 {
-	const char *ring = strptr;
-	ring = strstr(ring, key);
-	int rc;
+    const char *ring = strptr;
+    ring = strstr(ring, key);
+    int rc;
 
-	rc = sscanf(ring, "%*s: %lu %s", &val->val, val->unit);
-	if(rc != 2 || rc == EOF) return strptr;
-	return ring;
+    rc = sscanf(ring, "%*s: %lu %s", &val->val, val->unit);
+    if(rc != 2 || rc == EOF) return strptr;
+    return ring;
 }
 
 /* poor man's hash-table */
@@ -177,12 +199,12 @@ static inline const char* get_mem_val(const char *key, memval_t* val, const char
 #define MF_DIRECTMAP1G        0x0000010000000000
 
 #define ADDFLAG(search, fv) {\
-	if(strstr(meminfbuf, search) != NULL) pollflags |= fv;\
+    if(strstr(meminfbuf, search) != NULL) pollflags |= fv;\
 }
 
 static inline void poll_mem(sysinf_t *host_data)
 {
-	static long pollflags = 0;
+    static long pollflags = 0;
 
     FILE *fh = fopen("/proc/meminfo", "r");
     static char meminfbuf[PROC_MEMINF_BUFFER];
@@ -191,48 +213,48 @@ static inline void poll_mem(sysinf_t *host_data)
     fclose(fh);
 
     if(pollflags == 0) {
-    	ADDFLAG("MemTotal:", MF_MEMTOTAL);
-    	ADDFLAG("MemFree:", MF_MEMFREE);
-    	ADDFLAG("MemAvailable:", MF_MEMAVAILABLE);
-    	ADDFLAG("Cached:", MF_CACHED);
-    	ADDFLAG("SwapCached:", MF_SWAPCACHED);
-    	ADDFLAG("Active:", MF_ACIVE);
-    	ADDFLAG("Inactive:", MF_INACTIVE);
-    	ADDFLAG("Active(anon):", MF_ACTIVE_ANON_);
-    	ADDFLAG("Inactive(anon):", MF_INACTIVE_ANON_);
-    	ADDFLAG("Active(file):", MF_ACTIVE_FILE_);
-    	ADDFLAG("Inactive(file):", MF_INACTIVE_FILE_);
-    	ADDFLAG("Unevictable:", MF_UNEVICTABLE);
-    	ADDFLAG("Mlocked:", MF_MLOCKED);
-    	ADDFLAG("SwapTotal:", MF_SWAPTOTAL);
-    	ADDFLAG("SwapFree:", MF_SWAPFREE);
-    	ADDFLAG("Dirty:", MF_DIRTY);
-    	ADDFLAG("Writeback:", MF_WRITEBACK);
-    	ADDFLAG("AnonPages:", MF_ANONPAGES);
-    	ADDFLAG("Mapped:", MF_MAPPED);
-    	ADDFLAG("Shmem:", MF_SHMEM);
-    	ADDFLAG("Slab:", MF_SLAB);
-    	ADDFLAG("SReclaimable:", MF_SRECLAIMABLE);
-    	ADDFLAG("SUnreclaim:", MF_SUNRECLAIM);
-    	ADDFLAG("KernelStack:", MF_KERNELSTACK);
-    	ADDFLAG("PageTables:", MF_PAGETABLES);
-    	ADDFLAG("NFS_Unstable:", MF_NFS_UNSTABLE);
-    	ADDFLAG("WritebackTmp:", MF_WRITEBACKTMP);
-    	ADDFLAG("CommitLimit:", MF_COMMITLIMIT);
-    	ADDFLAG("Committed_AS:", MF_COMMITTED_AS);
-    	ADDFLAG("VmallocTotal:", MF_VMALLOCTOTAL);
-    	ADDFLAG("VmallocUsed:", MF_VMALLOCUSED);
-    	ADDFLAG("VmallocChunk:", MF_VMALLOCCHUNK);
-    	ADDFLAG("HardwareCorrupted:", MF_HARDWARECORRUPTED);
-    	ADDFLAG("AnonHugePages:", MF_ANONHUGEPAGES);
-    	ADDFLAG("HugePages_Total:", MF_HUGEPAGES_TOTAL);
-    	ADDFLAG("HugePages_Free:", MF_HUGEPAGES_FREE);
-    	ADDFLAG("HugePages_Rsvd:", MF_HUGEPAGES_RSVD);
-    	ADDFLAG("HugePages_Surp:", MF_HUGEPAGES_SURP);
-    	ADDFLAG("Hugepagesize:", MF_HUGEPAGESIZE);
-    	ADDFLAG("DirectMap4k:", MF_DIRECTMAP4K);
-    	ADDFLAG("DirectMap2M:", MF_DIRECTMAP2M);
-    	ADDFLAG("DirectMap1G:", MF_DIRECTMAP1G);
+        ADDFLAG("MemTotal:", MF_MEMTOTAL);
+        ADDFLAG("MemFree:", MF_MEMFREE);
+        ADDFLAG("MemAvailable:", MF_MEMAVAILABLE);
+        ADDFLAG("Cached:", MF_CACHED);
+        ADDFLAG("SwapCached:", MF_SWAPCACHED);
+        ADDFLAG("Active:", MF_ACIVE);
+        ADDFLAG("Inactive:", MF_INACTIVE);
+        ADDFLAG("Active(anon):", MF_ACTIVE_ANON_);
+        ADDFLAG("Inactive(anon):", MF_INACTIVE_ANON_);
+        ADDFLAG("Active(file):", MF_ACTIVE_FILE_);
+        ADDFLAG("Inactive(file):", MF_INACTIVE_FILE_);
+        ADDFLAG("Unevictable:", MF_UNEVICTABLE);
+        ADDFLAG("Mlocked:", MF_MLOCKED);
+        ADDFLAG("SwapTotal:", MF_SWAPTOTAL);
+        ADDFLAG("SwapFree:", MF_SWAPFREE);
+        ADDFLAG("Dirty:", MF_DIRTY);
+        ADDFLAG("Writeback:", MF_WRITEBACK);
+        ADDFLAG("AnonPages:", MF_ANONPAGES);
+        ADDFLAG("Mapped:", MF_MAPPED);
+        ADDFLAG("Shmem:", MF_SHMEM);
+        ADDFLAG("Slab:", MF_SLAB);
+        ADDFLAG("SReclaimable:", MF_SRECLAIMABLE);
+        ADDFLAG("SUnreclaim:", MF_SUNRECLAIM);
+        ADDFLAG("KernelStack:", MF_KERNELSTACK);
+        ADDFLAG("PageTables:", MF_PAGETABLES);
+        ADDFLAG("NFS_Unstable:", MF_NFS_UNSTABLE);
+        ADDFLAG("WritebackTmp:", MF_WRITEBACKTMP);
+        ADDFLAG("CommitLimit:", MF_COMMITLIMIT);
+        ADDFLAG("Committed_AS:", MF_COMMITTED_AS);
+        ADDFLAG("VmallocTotal:", MF_VMALLOCTOTAL);
+        ADDFLAG("VmallocUsed:", MF_VMALLOCUSED);
+        ADDFLAG("VmallocChunk:", MF_VMALLOCCHUNK);
+        ADDFLAG("HardwareCorrupted:", MF_HARDWARECORRUPTED);
+        ADDFLAG("AnonHugePages:", MF_ANONHUGEPAGES);
+        ADDFLAG("HugePages_Total:", MF_HUGEPAGES_TOTAL);
+        ADDFLAG("HugePages_Free:", MF_HUGEPAGES_FREE);
+        ADDFLAG("HugePages_Rsvd:", MF_HUGEPAGES_RSVD);
+        ADDFLAG("HugePages_Surp:", MF_HUGEPAGES_SURP);
+        ADDFLAG("Hugepagesize:", MF_HUGEPAGESIZE);
+        ADDFLAG("DirectMap4k:", MF_DIRECTMAP4K);
+        ADDFLAG("DirectMap2M:", MF_DIRECTMAP2M);
+        ADDFLAG("DirectMap1G:", MF_DIRECTMAP1G);
     }
 
     sscanf(strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
@@ -280,8 +302,8 @@ static inline void poll_mem(sysinf_t *host_data)
     sscanf(strstr(meminfbuf, "DirectMap2M:"), "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
 
     if(pollflags & MF_DIRECTMAP1G)
-    	sscanf(strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu",
-    			&host_data->mem.DirectMap1G);
+        sscanf(strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu",
+                &host_data->mem.DirectMap1G);
 }
 
 static inline void poll_uptime(sysinf_t *host_data)
@@ -406,7 +428,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
     
 
     if(pollsw & RPRT_METADATA) {
-    	cJSON *meta = cJSON_CreateObject();
+        cJSON *meta = cJSON_CreateObject();
         cJSON_AddStringToObject(meta, "location", cfg->location);
         cJSON_AddStringToObject(meta, "contact", cfg->contact);
         cJSON_AddStringToObject(meta, "group", cfg->group);
@@ -420,13 +442,13 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         fsptr = host_data->fsinf;
         while(fsptr != NULL) {
 
-        	printf("->%s, %s\n", fsptr->mountpoint, fsptr->fstype);
+            printf("->%s, %s\n", fsptr->mountpoint, fsptr->fstype);
 
-        	if(fsptr->fstype == NULL) {
-        		fsptr->fstype = strdup("0x0");
-        	}
-        	/* Mow this over every iteration */
-        	devptr =  cJSON_CreateObject();
+            if(fsptr->fstype == NULL) {
+                fsptr->fstype = strdup("0x0");
+            }
+            /* Mow this over every iteration */
+            devptr =  cJSON_CreateObject();
             cJSON_AddStringToObject(devptr, "dev", fsptr->dev);
             cJSON_AddStringToObject(devptr, "mountpoint", fsptr->mountpoint);
             cJSON_AddStringToObject(devptr, "fstype", fsptr->fstype);
@@ -445,162 +467,162 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
     if(pollsw & POLL_IFACE) {
 
-    	cJSON *ifdevs = cJSON_CreateArray();
+        cJSON *ifdevs = cJSON_CreateArray();
 
-    	ifaceptr = host_data->iface;
-    	while(ifaceptr != NULL) {
-    		/* We don't need inactive devices */
-			if(ifaceptr->rx_packets+ifaceptr->tx_packets == 0) {
-				ifaceptr = ifaceptr->next;
-				continue;
-			}
+        ifaceptr = host_data->iface;
+        while(ifaceptr != NULL) {
+            /* We don't need inactive devices */
+            if(ifaceptr->rx_packets+ifaceptr->tx_packets == 0) {
+                ifaceptr = ifaceptr->next;
+                continue;
+            }
 
-			/* Mow this over every iteration */
-			devptr =  cJSON_CreateObject();
+            /* Mow this over every iteration */
+            devptr =  cJSON_CreateObject();
 
-			cJSON_AddStringToObject(devptr, "dev", ifaceptr->dev);
-			cJSON_AddNumberToObject(devptr, "c|rx_packets", ifaceptr->rx_packets);
-			cJSON_AddNumberToObject(devptr, "c|rx_bytes", ifaceptr->rx_bytes);
-			cJSON_AddNumberToObject(devptr, "c|rx_errs", ifaceptr->rx_errs);
-			cJSON_AddNumberToObject(devptr, "c|rx_drop", ifaceptr->rx_drop);
-			cJSON_AddNumberToObject(devptr, "c|rx_fifo", ifaceptr->rx_fifo);
-			cJSON_AddNumberToObject(devptr, "c|rx_frame", ifaceptr->rx_frame);
-			cJSON_AddNumberToObject(devptr, "c|rx_comp", ifaceptr->rx_comp);
-			cJSON_AddNumberToObject(devptr, "c|rx_multi", ifaceptr->rx_multi);
-			cJSON_AddNumberToObject(devptr, "c|tx_packets", ifaceptr->tx_packets);
-			cJSON_AddNumberToObject(devptr, "c|tx_bytes", ifaceptr->tx_bytes);
-			cJSON_AddNumberToObject(devptr, "c|tx_errs", ifaceptr->tx_errs);
-			cJSON_AddNumberToObject(devptr, "c|tx_drop", ifaceptr->tx_drop);
-			cJSON_AddNumberToObject(devptr, "c|c|tx_fifo", ifaceptr->tx_fifo);
-			cJSON_AddNumberToObject(devptr, "c|tx_colls", ifaceptr->tx_colls);
-			cJSON_AddNumberToObject(devptr, "c|tx_carr", ifaceptr->tx_carr);
-			cJSON_AddNumberToObject(devptr, "c|tx_comp", ifaceptr->tx_comp);
-			cJSON_AddItemToArray(ifdevs, devptr);
+            cJSON_AddStringToObject(devptr, "dev", ifaceptr->dev);
+            cJSON_AddNumberToObject(devptr, "c|rx_packets", ifaceptr->rx_packets);
+            cJSON_AddNumberToObject(devptr, "c|rx_bytes", ifaceptr->rx_bytes);
+            cJSON_AddNumberToObject(devptr, "c|rx_errs", ifaceptr->rx_errs);
+            cJSON_AddNumberToObject(devptr, "c|rx_drop", ifaceptr->rx_drop);
+            cJSON_AddNumberToObject(devptr, "c|rx_fifo", ifaceptr->rx_fifo);
+            cJSON_AddNumberToObject(devptr, "c|rx_frame", ifaceptr->rx_frame);
+            cJSON_AddNumberToObject(devptr, "c|rx_comp", ifaceptr->rx_comp);
+            cJSON_AddNumberToObject(devptr, "c|rx_multi", ifaceptr->rx_multi);
+            cJSON_AddNumberToObject(devptr, "c|tx_packets", ifaceptr->tx_packets);
+            cJSON_AddNumberToObject(devptr, "c|tx_bytes", ifaceptr->tx_bytes);
+            cJSON_AddNumberToObject(devptr, "c|tx_errs", ifaceptr->tx_errs);
+            cJSON_AddNumberToObject(devptr, "c|tx_drop", ifaceptr->tx_drop);
+            cJSON_AddNumberToObject(devptr, "c|c|tx_fifo", ifaceptr->tx_fifo);
+            cJSON_AddNumberToObject(devptr, "c|tx_colls", ifaceptr->tx_colls);
+            cJSON_AddNumberToObject(devptr, "c|tx_carr", ifaceptr->tx_carr);
+            cJSON_AddNumberToObject(devptr, "c|tx_comp", ifaceptr->tx_comp);
+            cJSON_AddItemToArray(ifdevs, devptr);
 
-			ifaceptr = ifaceptr->next;
-    	}
-    	cJSON_AddItemToObject(root, "iface", ifdevs);
+            ifaceptr = ifaceptr->next;
+        }
+        cJSON_AddItemToObject(root, "iface", ifdevs);
     }
 
     if(pollsw & POLL_IODEV) {
 
-    	cJSON *iodevs = cJSON_CreateArray();
+        cJSON *iodevs = cJSON_CreateArray();
 
-    	iodevptr = host_data->iodev;
-    	while(iodevptr != NULL) {
-    		/* We don't need inactive devices */
-			if(iodevptr->reads+iodevptr->writes == 0) {
-				iodevptr = iodevptr->next;
-				continue;
-			}
+        iodevptr = host_data->iodev;
+        while(iodevptr != NULL) {
+            /* We don't need inactive devices */
+            if(iodevptr->reads+iodevptr->writes == 0) {
+                iodevptr = iodevptr->next;
+                continue;
+            }
 
-			/* Mow this over every iteration */
-			devptr =  cJSON_CreateObject();
+            /* Mow this over every iteration */
+            devptr =  cJSON_CreateObject();
 
-			cJSON_AddStringToObject(devptr, "dev", iodevptr->dev);
-			cJSON_AddNumberToObject(devptr, "c|reads", iodevptr->reads);
-			cJSON_AddNumberToObject(devptr, "c|read_sectors", iodevptr->read_sectors);
-			cJSON_AddNumberToObject(devptr, "c|reads_merged", iodevptr->reads_merged);
-			cJSON_AddNumberToObject(devptr, "c|msec_reading", iodevptr->msec_reading);
-			cJSON_AddNumberToObject(devptr, "c|writes", iodevptr->writes);
-			cJSON_AddNumberToObject(devptr, "c|write_sectors", iodevptr->write_sectors);
-			cJSON_AddNumberToObject(devptr, "c|writes_merged", iodevptr->writes_merged);
-			cJSON_AddNumberToObject(devptr, "c|msec_writing", iodevptr->msec_writing);
-			cJSON_AddNumberToObject(devptr, "current_ios", iodevptr->current_ios);
-			cJSON_AddNumberToObject(devptr, "c|msec_ios", iodevptr->msec_ios);
-			cJSON_AddNumberToObject(devptr, "c|weighted_ios", iodevptr->weighted_ios);
-			cJSON_AddItemToArray(iodevs, devptr);
+            cJSON_AddStringToObject(devptr, "dev", iodevptr->dev);
+            cJSON_AddNumberToObject(devptr, "c|reads", iodevptr->reads);
+            cJSON_AddNumberToObject(devptr, "c|read_sectors", iodevptr->read_sectors);
+            cJSON_AddNumberToObject(devptr, "c|reads_merged", iodevptr->reads_merged);
+            cJSON_AddNumberToObject(devptr, "c|msec_reading", iodevptr->msec_reading);
+            cJSON_AddNumberToObject(devptr, "c|writes", iodevptr->writes);
+            cJSON_AddNumberToObject(devptr, "c|write_sectors", iodevptr->write_sectors);
+            cJSON_AddNumberToObject(devptr, "c|writes_merged", iodevptr->writes_merged);
+            cJSON_AddNumberToObject(devptr, "c|msec_writing", iodevptr->msec_writing);
+            cJSON_AddNumberToObject(devptr, "current_ios", iodevptr->current_ios);
+            cJSON_AddNumberToObject(devptr, "c|msec_ios", iodevptr->msec_ios);
+            cJSON_AddNumberToObject(devptr, "c|weighted_ios", iodevptr->weighted_ios);
+            cJSON_AddItemToArray(iodevs, devptr);
 
-			iodevptr = iodevptr->next;
-    	}
-    	cJSON_AddItemToObject(root, "iodev", iodevs);
+            iodevptr = iodevptr->next;
+        }
+        cJSON_AddItemToObject(root, "iodev", iodevs);
     }
 
     if(pollsw & POLL_LOAD) {
-    	cJSON *load = cJSON_CreateObject();
-    	cJSON_AddNumberToObject(load, "1min", host_data->load_1);
-    	cJSON_AddNumberToObject(load, "5min", host_data->load_5);
-    	cJSON_AddNumberToObject(load, "15min", host_data->load_15);
-    	cJSON_AddNumberToObject(load, "procs_run", host_data->procs_running);
-    	cJSON_AddNumberToObject(load, "procs_total", host_data->procs_total);
-    	cJSON_AddItemToObject(root, "sysload", load);
+        cJSON *load = cJSON_CreateObject();
+        cJSON_AddNumberToObject(load, "1min", host_data->load_1);
+        cJSON_AddNumberToObject(load, "5min", host_data->load_5);
+        cJSON_AddNumberToObject(load, "15min", host_data->load_15);
+        cJSON_AddNumberToObject(load, "procs_run", host_data->procs_running);
+        cJSON_AddNumberToObject(load, "procs_total", host_data->procs_total);
+        cJSON_AddItemToObject(root, "sysload", load);
     }
 
     if(pollsw & POLL_CPU) {
 
-    	cJSON *cputtls = cJSON_CreateObject();
-    	cJSON_AddNumberToObject(cputtls, "c|user", host_data->cpu_user);
-    	cJSON_AddNumberToObject(cputtls, "c|nice", host_data->cpu_nice);
-    	cJSON_AddNumberToObject(cputtls, "c|system", host_data->cpu_system);
-    	cJSON_AddNumberToObject(cputtls, "c|idle", host_data->cpu_idle);
-    	cJSON_AddNumberToObject(cputtls, "c|iowait", host_data->cpu_iowait);
-    	cJSON_AddNumberToObject(cputtls, "c|irq", host_data->cpu_irq);
-    	cJSON_AddNumberToObject(cputtls, "c|s_irq", host_data->cpu_sirq);
-    	cJSON_AddNumberToObject(cputtls, "c|steal", host_data->cpu_steal);
-    	cJSON_AddNumberToObject(cputtls, "c|guest", host_data->cpu_guest);
-    	cJSON_AddNumberToObject(cputtls, "c|n_guest", host_data->cpu_guest_nice);
-    	cJSON_AddNumberToObject(cputtls, "c|intrps", host_data->interrupts);
-    	cJSON_AddNumberToObject(cputtls, "c|s_intrps", host_data->s_interrupts);
-    	cJSON_AddNumberToObject(cputtls, "c|ctxt", host_data->context_switches);
-    	cJSON_AddItemToObject(root, "cpu_ttls", cputtls);
+        cJSON *cputtls = cJSON_CreateObject();
+        cJSON_AddNumberToObject(cputtls, "c|user", host_data->cpu_user);
+        cJSON_AddNumberToObject(cputtls, "c|nice", host_data->cpu_nice);
+        cJSON_AddNumberToObject(cputtls, "c|system", host_data->cpu_system);
+        cJSON_AddNumberToObject(cputtls, "c|idle", host_data->cpu_idle);
+        cJSON_AddNumberToObject(cputtls, "c|iowait", host_data->cpu_iowait);
+        cJSON_AddNumberToObject(cputtls, "c|irq", host_data->cpu_irq);
+        cJSON_AddNumberToObject(cputtls, "c|s_irq", host_data->cpu_sirq);
+        cJSON_AddNumberToObject(cputtls, "c|steal", host_data->cpu_steal);
+        cJSON_AddNumberToObject(cputtls, "c|guest", host_data->cpu_guest);
+        cJSON_AddNumberToObject(cputtls, "c|n_guest", host_data->cpu_guest_nice);
+        cJSON_AddNumberToObject(cputtls, "c|intrps", host_data->interrupts);
+        cJSON_AddNumberToObject(cputtls, "c|s_intrps", host_data->s_interrupts);
+        cJSON_AddNumberToObject(cputtls, "c|ctxt", host_data->context_switches);
+        cJSON_AddItemToObject(root, "cpu_ttls", cputtls);
 
-    	cJSON *cpus = cJSON_CreateArray();
-    	cpuptr = host_data->cpu;
-		while(cpuptr != NULL) {
+        cJSON *cpus = cJSON_CreateArray();
+        cpuptr = host_data->cpu;
+        while(cpuptr != NULL) {
 
-			/* Mow this over every iteration */
-			devptr =  cJSON_CreateObject();
+            /* Mow this over every iteration */
+            devptr =  cJSON_CreateObject();
 
-			cJSON_AddNumberToObject(devptr, "cpu", cpuptr->cpu);
-			cJSON_AddNumberToObject(devptr, "c|user", cpuptr->user);
-			cJSON_AddNumberToObject(devptr, "c|nice", cpuptr->nice);
-			cJSON_AddNumberToObject(devptr, "c|system", cpuptr->system);
-			cJSON_AddNumberToObject(devptr, "c|idle", cpuptr->idle);
-			cJSON_AddNumberToObject(devptr, "c|iowait", cpuptr->iowait);
-			cJSON_AddNumberToObject(devptr, "c|irq", cpuptr->irq);
-			cJSON_AddNumberToObject(devptr, "c|s_irq", cpuptr->softirq);
-			cJSON_AddNumberToObject(devptr, "c|steal", cpuptr->steal);
-			cJSON_AddNumberToObject(devptr, "c|guest", cpuptr->guest);
-			cJSON_AddNumberToObject(devptr, "c|n_guest", cpuptr->guest_nice);
-			cJSON_AddNumberToObject(devptr, "clock", cpuptr->cpuMhz);
-			cJSON_AddItemToArray(cpus, devptr);
+            cJSON_AddNumberToObject(devptr, "cpu", cpuptr->cpu);
+            cJSON_AddNumberToObject(devptr, "c|user", cpuptr->user);
+            cJSON_AddNumberToObject(devptr, "c|nice", cpuptr->nice);
+            cJSON_AddNumberToObject(devptr, "c|system", cpuptr->system);
+            cJSON_AddNumberToObject(devptr, "c|idle", cpuptr->idle);
+            cJSON_AddNumberToObject(devptr, "c|iowait", cpuptr->iowait);
+            cJSON_AddNumberToObject(devptr, "c|irq", cpuptr->irq);
+            cJSON_AddNumberToObject(devptr, "c|s_irq", cpuptr->softirq);
+            cJSON_AddNumberToObject(devptr, "c|steal", cpuptr->steal);
+            cJSON_AddNumberToObject(devptr, "c|guest", cpuptr->guest);
+            cJSON_AddNumberToObject(devptr, "c|n_guest", cpuptr->guest_nice);
+            cJSON_AddNumberToObject(devptr, "clock", cpuptr->cpuMhz);
+            cJSON_AddItemToArray(cpus, devptr);
 
-			cpuptr = cpuptr->next;
-		}
-		cJSON_AddItemToObject(root, "cpus", cpus);
+            cpuptr = cpuptr->next;
+        }
+        cJSON_AddItemToObject(root, "cpus", cpus);
     }
 
     if(pollsw & RPRT_CPU_SSTATIC) {
 
-    	cJSON *cpus_static = cJSON_CreateArray();
+        cJSON *cpus_static = cJSON_CreateArray();
 
-    	cpuptr = host_data->cpu;
-    	while(cpuptr != NULL) {
+        cpuptr = host_data->cpu;
+        while(cpuptr != NULL) {
 
-			/* Mow this over every iteration */
-			devptr =  cJSON_CreateObject();
+            /* Mow this over every iteration */
+            devptr =  cJSON_CreateObject();
 
-			cJSON_AddNumberToObject(devptr, "cpu", cpuptr->cpu);
-			cJSON_AddStringToObject(devptr, "vendor_id", cpuptr->vendor_id);
-			cJSON_AddStringToObject(devptr, "model", cpuptr->model);
-			cJSON_AddStringToObject(devptr, "flags", cpuptr->flags);
-			cJSON_AddNumberToObject(devptr, "cache", cpuptr->cache);
-			cJSON_AddStringToObject(devptr, "cache_units", cpuptr->cache_units);
-			cJSON_AddNumberToObject(devptr, "phy_id", cpuptr->phy_id);
-			cJSON_AddNumberToObject(devptr, "siblings", cpuptr->siblings);
-			cJSON_AddNumberToObject(devptr, "core_id", cpuptr->core_id);
-			cJSON_AddNumberToObject(devptr, "cpu_cores", cpuptr->cpu_cores);
-			cJSON_AddNumberToObject(devptr, "bogomips", cpuptr->bogomips);
-			cJSON_AddItemToArray(cpus_static, devptr);
+            cJSON_AddNumberToObject(devptr, "cpu", cpuptr->cpu);
+            cJSON_AddStringToObject(devptr, "vendor_id", cpuptr->vendor_id);
+            cJSON_AddStringToObject(devptr, "model", cpuptr->model);
+            cJSON_AddStringToObject(devptr, "flags", cpuptr->flags);
+            cJSON_AddNumberToObject(devptr, "cache", cpuptr->cache);
+            cJSON_AddStringToObject(devptr, "cache_units", cpuptr->cache_units);
+            cJSON_AddNumberToObject(devptr, "phy_id", cpuptr->phy_id);
+            cJSON_AddNumberToObject(devptr, "siblings", cpuptr->siblings);
+            cJSON_AddNumberToObject(devptr, "core_id", cpuptr->core_id);
+            cJSON_AddNumberToObject(devptr, "cpu_cores", cpuptr->cpu_cores);
+            cJSON_AddNumberToObject(devptr, "bogomips", cpuptr->bogomips);
+            cJSON_AddItemToArray(cpus_static, devptr);
 
-			cpuptr = cpuptr->next;
-    	}
-    	cJSON_AddItemToObject(root, "cpus_static", cpus_static);
+            cpuptr = cpuptr->next;
+        }
+        cJSON_AddItemToObject(root, "cpus_static", cpus_static);
     }
 
     if(pollsw & POLL_MEM) {
-    	cJSON *mem = cJSON_CreateObject();
-		cJSON_AddNumberToObject(mem, "MemTotal", host_data->mem.MemTotal);
+        cJSON *mem = cJSON_CreateObject();
+        cJSON_AddNumberToObject(mem, "MemTotal", host_data->mem.MemTotal);
         cJSON_AddNumberToObject(mem, "MemFree", host_data->mem.MemFree);
         cJSON_AddNumberToObject(mem, "MemAvailable", host_data->mem.MemAvailable);
         cJSON_AddNumberToObject(mem, "Buffers", host_data->mem.Buffers);
@@ -644,7 +666,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         cJSON_AddNumberToObject(mem, "DirectMap4k", host_data->mem.DirectMap4k);
         cJSON_AddNumberToObject(mem, "DirectMap2M", host_data->mem.DirectMap2M);
         cJSON_AddNumberToObject(mem, "DirectMap1G", host_data->mem.DirectMap1G);
-    	cJSON_AddItemToObject(root, "memory", mem);
+        cJSON_AddItemToObject(root, "memory", mem);
     }
     endgame = cJSON_Print(root);
     cJSON_Delete(root);
@@ -682,11 +704,11 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
 
 
     if(pollsw & RPRT_METADATA) {
-    	tmpobj = json_pack("{ssssss}",
-    			"location", cfg->location,
-    			"contact", cfg->contact,
-    			"group", cfg->group);
-    	json_object_set_new(root, "meta", tmpobj);
+        tmpobj = json_pack("{ssssss}",
+                "location", cfg->location,
+                "contact", cfg->contact,
+                "group", cfg->group);
+        json_object_set_new(root, "meta", tmpobj);
     }
 
     if(pollsw & POLL_FS) {
@@ -720,11 +742,11 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         ifaceptr = host_data->iface;
         while(ifaceptr != NULL) {
 
-        	/* We don't need inactive devices */
-        	if(ifaceptr->rx_packets+ifaceptr->tx_packets == 0) {
-        		ifaceptr = ifaceptr->next;
-        		continue;
-        	}
+            /* We don't need inactive devices */
+            if(ifaceptr->rx_packets+ifaceptr->tx_packets == 0) {
+                ifaceptr = ifaceptr->next;
+                continue;
+            }
 
             tmpobj = json_pack("{sssIsIsIsIsIsIsIsIsIsIsIsIsIsIsIsI}",
                     "dev", ifaceptr->dev,
@@ -758,11 +780,11 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         iodevptr = host_data->iodev;
         while(iodevptr != NULL) {
 
-        	/* We don't need inactive devices */
-        	if(iodevptr->reads+iodevptr->writes == 0) {
-        		iodevptr = iodevptr->next;
-        		continue;
-        	}
+            /* We don't need inactive devices */
+            if(iodevptr->reads+iodevptr->writes == 0) {
+                iodevptr = iodevptr->next;
+                continue;
+            }
 
             tmpobj = json_pack("{sssIsIsIsIsIsIsIsIsIsIsI}",
                     "dev", iodevptr->dev,
@@ -1037,8 +1059,7 @@ static void cleanup(sysinf_t *host_data, agent_config_t *cfg)
     if(cfg->report_host != NULL) free(cfg->report_host);
     if(cfg->report_port != NULL) free(cfg->report_port);
     if(cfg->runuser != NULL) free(cfg->runuser);
-    if(cfg->config_file != NULL) free(cfg->config_file);
-    free(cfg);
+    if(cfg->config_dir != NULL) free(cfg->config_dir);
 }
 
 
@@ -1135,7 +1156,7 @@ static uint64_t profile_id(char *forced_id, agent_config_t *cfg)
 int main(int argc, char *argv[])
 {
     sysinf_t *host_data;
-    agent_config_t *cfg;
+    agent_config_t cfg;
     unsigned int pollcount = 0;
     int poll_sw = 0;
     int rc;
@@ -1144,6 +1165,7 @@ int main(int argc, char *argv[])
     char *forced_id = NULL;
     FILE *pidf;
     pid_t mypid;
+    char *cfgstrs[2];
 
     init_flag = 0;
     on = 1;
@@ -1157,41 +1179,59 @@ int main(int argc, char *argv[])
     init_hostdata(host_data);
 
     /* Allocate config object and set defaults */
-    cfg = malloc(sizeof(agent_config_t));
-    memset(cfg, 0, sizeof(agent_config_t));
-    set_cfg_defaults(cfg);
+    set_cfg_defaults(&cfg);
 
-    /* Now overwrite with config file */
-    if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
-        syslog(LOG_ERR, "Can't load '%s'\n", cfg->config_file);
+    /* Create config file strings */
+    cfgstrs[0] = malloc(strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
+    sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
+
+    /* Create config file strings */
+	cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
+	sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
+
+    /* Now overwrite with configuration files */
+    if (ini_parse(cfgstrs[0], config_handler, &cfg) < 0) {
+        syslog(LOG_ERR, "Can't load '%s'\n", cfgstrs[0]);
     }
+	if (ini_parse(cfgstrs[1], config_handler, &cfg) < 0) {
+		syslog(LOG_ERR, "Can't load '%s'\n", cfgstrs[1]);
+	}
 
     /* See what the command line has to say.... */
     while ((rc = getopt (argc, argv, "hDt:p:r:c:i:")) != -1) {
         switch(rc) {
         case 'h':
-        	printf("%s", AT_AGENT_HELP);
-        	return EXIT_SUCCESS;
+            printf("%s", AT_AGENT_HELP);
+            return EXIT_SUCCESS;
         case 'D':
-            cfg->daemon = 0;
+            cfg.daemon = 0;
             break;
         case 'i':
             forced_id = strdup(optarg);
             break;
         case 't':
-            cfg->report_host = strdup(optarg);
+            cfg.report_host = strdup(optarg);
             break;
         case 'p':
-            cfg->report_port = strdup(optarg);
+            cfg.report_port = strdup(optarg);
             break;
         case 'r':
-            cfg->master_rate = atoi(optarg)*1000000;
+            cfg.master_rate = atoi(optarg)*1000000;
             break;
         case 'c':
-            cfg->config_file = strdup(optarg);
-            if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
-                syslog(LOG_ERR, "Can't load '%s'", cfg->config_file);
-            }
+        	free(cfg.config_dir);
+        	free(cfgstrs[0]);
+        	free(cfgstrs[1]);
+
+            cfg.config_dir = strdup(optarg);
+            /* Create config file strings */
+			cfgstrs[0] = malloc(strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
+			sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
+
+			/* Create config file strings */
+			cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
+			sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
+
             break;
         case '?':
             syslog(LOG_ERR, "argument expected");
@@ -1206,7 +1246,7 @@ int main(int argc, char *argv[])
     syslog (LOG_CRIT, "starting");
 
     /* Get this host ID */
-    hostid = profile_id(forced_id, cfg);
+    hostid = profile_id(forced_id, &cfg);
     if(forced_id != NULL) free(forced_id);
     host_data->id = hostid;
     
@@ -1216,7 +1256,7 @@ int main(int argc, char *argv[])
     syslog(LOG_INFO, "using host id %lx", hostid);
 
     /* forking */
-    if(cfg->daemon) {
+    if(cfg.daemon) {
         rc = fork();
         if(rc != 0) {
             exit(EXIT_SUCCESS);
@@ -1236,7 +1276,7 @@ int main(int argc, char *argv[])
     fclose(pidf);
 
     /* Set user */
-    mememe = getpwnam(cfg->runuser);
+    mememe = getpwnam(cfg.runuser);
     if(mememe != NULL) {
         setreuid(mememe->pw_uid, mememe->pw_uid);
         setregid(mememe->pw_gid, mememe->pw_gid);
@@ -1245,20 +1285,20 @@ int main(int argc, char *argv[])
     }
 
     /* Set the log mask */
-	rc = 0;
-	switch(cfg->log_level) {
-	case 7: rc |= LOG_MASK(LOG_DEBUG);
-	case 6: rc |= LOG_MASK(LOG_INFO);
-	case 5: rc |= LOG_MASK(LOG_NOTICE);
-	case 4: rc |= LOG_MASK(LOG_WARNING);
-	case 3: rc |= LOG_MASK(LOG_ERR);
-	case 2: rc |= LOG_MASK(LOG_CRIT);
-	case 1: rc |= LOG_MASK(LOG_ALERT);
-	case 0: rc |= LOG_MASK(LOG_EMERG);
-	}
-	setlogmask(rc);
+    rc = 0;
+    switch(cfg.log_level) {
+    case 7: rc |= LOG_MASK(LOG_DEBUG);
+    case 6: rc |= LOG_MASK(LOG_INFO);
+    case 5: rc |= LOG_MASK(LOG_NOTICE);
+    case 4: rc |= LOG_MASK(LOG_WARNING);
+    case 3: rc |= LOG_MASK(LOG_ERR);
+    case 2: rc |= LOG_MASK(LOG_CRIT);
+    case 1: rc |= LOG_MASK(LOG_ALERT);
+    case 0: rc |= LOG_MASK(LOG_EMERG);
+    }
+    setlogmask(rc);
 
-	printf("log level/mask %i/%x\n", cfg->log_level, rc);
+    printf("log level/mask %i/%x\n", cfg.log_level, rc);
 
     /* Handle some signals */
     if (signal (SIGINT, quitit) == SIG_IGN)
@@ -1269,7 +1309,7 @@ int main(int argc, char *argv[])
              signal (SIGHUP, SIG_IGN);
 
     /* Establish connection to master server */
-    out_sock = netsock(cfg);
+    out_sock = netsock(&cfg);
     if(out_sock == 0) {
         syslog(LOG_CRIT, "failed to get network socket, I quit");
         return(EXIT_FAILURE);
@@ -1278,7 +1318,7 @@ int main(int argc, char *argv[])
     for(pollcount=0 ;on; pollcount += 1) {
 
         /* Flip some bits to see what we're polling this time around */
-        poll_sw = get_poll_bits(pollcount, cfg);
+        poll_sw = get_poll_bits(pollcount, &cfg);
 
         /* Poll system based on multiplier schedule */
         if( poll_sw & POLL_CPU ) poll_cpus(host_data);
@@ -1292,32 +1332,44 @@ int main(int argc, char *argv[])
         /* Time-stamp the sample */
         gettimeofday(&host_data->sample_tv, NULL);
 
-        json_str = jsonify(host_data, cfg, poll_sw);
+        json_str = jsonify(host_data, &cfg, poll_sw);
 
-        report(json_str, cfg);
+        report(json_str, &cfg);
         free(json_str);
 
-        usleep(cfg->master_rate);
+        usleep(cfg.master_rate);
 
         /* If SIGHUP is received, reread config, reinitialize host data
          * structure and reset network connection to master host (since it
          * might have changed. */
         if(init_flag) {
             syslog(LOG_INFO, "re-initializing host data");
-            if (ini_parse(cfg->config_file, config_handler, cfg) < 0) {
-                syslog(LOG_ERR, "Can't load '%s'\n", cfg->config_file);
-            }
+
+
+            free(cfg.config_dir);
+			free(cfgstrs[0]);
+			free(cfgstrs[1]);
+
+			cfg.config_dir = strdup(optarg);
+			/* Create config file strings */
+			cfgstrs[0] = malloc(strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
+			sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
+
+			/* Create config file strings */
+			cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
+			sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
+
             init_hostdata(host_data);
 
             close(out_sock);
-            out_sock = netsock(cfg);
+            out_sock = netsock(&cfg);
             init_flag = 0;
         }
         pollcount += 1;
     }
     /* Out of main loop */
 
-    cleanup(host_data, cfg);
+    cleanup(host_data, &cfg);
     syslog(LOG_CRIT, "exited");
     closelog();
 
