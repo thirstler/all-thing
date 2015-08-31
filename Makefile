@@ -57,18 +57,21 @@ uninstall:
 
 # For creating tarballs for SRPM generation, increment with SPEC files. Master
 # and agent are incremented together for now.s
-VER=0.8.5
+VER=0.8.6
+REL=4
 
 srcrpms: at_agent-tar at_master-tar
 	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_agent.spec
 	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_master.spec
+	sed -i "s/^Release: .*$$/Release: ${REL}/" rpmspec/at_agent.spec
+	sed -i "s/^Release: .*$$/Release: ${REL}/" rpmspec/at_master.spec
 	cp -f rpmspec/at_agent.spec ~/rpmbuild/SPECS
 	cp -f rpmspec/at_master.spec ~/rpmbuild/SPECS
 	cp -f all-thing-agent-${VER}.tar.gz ~/rpmbuild/SOURCES
 	cp -f all-thing-master-${VER}.tar.gz ~/rpmbuild/SOURCES
 	cd ~/rpmbuild
-	rpmbuild -bs rpmspec/at_agent.spec
-	rpmbuild -bs rpmspec/at_master.spec
+	rpmbuild -bs --sign rpmspec/at_agent.spec
+	rpmbuild -bs --sign rpmspec/at_master.spec
 	
 
 at_agent-tar:
@@ -78,6 +81,7 @@ at_agent-tar:
 	cp -a config/allthing.conf ./all-thing-agent-${VER}/config/
 	cp -a config/agent.in ./all-thing-agent-${VER}/config/
 	cp -a scripts/at_agent.rc ./all-thing-agent-${VER}/scripts/
+	cp -a scripts/at_agent.service ./all-thing-agent-${VER}/scripts/
 	tar -czf all-thing-agent-${VER}.tar.gz all-thing-agent-${VER}
 	rm -rf ./all-thing-agent-${VER}
 
@@ -88,6 +92,7 @@ at_master-tar:
 	cp -a config/allthing.conf ./all-thing-master-${VER}/config/
 	cp -a config/master.in ./all-thing-master-${VER}/config/
 	cp -a scripts/at_master.rc ./all-thing-master-${VER}/scripts/
+	cp -a scripts/at_master.service ./all-thing-master-${VER}/scripts/
 	tar -czf all-thing-master-${VER}.tar.gz all-thing-master-${VER}
 	rm -rf ./all-thing-master-${VER}
 		

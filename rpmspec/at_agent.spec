@@ -1,6 +1,6 @@
 Name: all-thing-agent
-Version: 0.8.5
-Release: 1%{?dist}
+Version: 0.8.6
+Release: 4
 Summary: All thing monitoring agent	
  
 Group: Monitors		
@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc
-Requires: glibc jansson /bin/cat /bin/mkdir/bin/cp
+Requires: glibc /bin/cat /bin/mkdir /bin/cp procps-ng coreutils
 
 %description
 Monitoring agent for the All-Thing HPC monitoring system
@@ -24,26 +24,61 @@ make at_agent
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}/etc
-mkdir -p %{buildroot}/etc/init.d
-mkdir -p %{buildroot}/usr/share/allthing/config
+mkdir -p %{buildroot}/etc/allthing/
+mkdir -p %{buildroot}/usr/share/allthing/
 cp agent/at_agent %{buildroot}/usr/sbin/
-cp config/allthing.conf %{buildroot}/etc/
-cp config/agent.in %{buildroot}/usr/share/allthing/config/
-cp scripts/at_agent.rc %{buildroot}/etc/init.d/at_agent
+cp config/allthing.conf %{buildroot}/etc/allthing/
+cp config/agent.in %{buildroot}/etc/allthing/agent.conf
+cp scripts/at_agent.rc %{buildroot}/usr/share/allthing/at_agent.rc
+cp scripts/at_agent.service %{buildroot}/usr/share/allthing/at_agent.service
 
 %files
-%config(noreplace) %attr(640 root root) /etc/allthing.conf
+%config(noreplace) %attr(640 root root) /etc/allthing/allthing.conf
+%config(noreplace) %attr(640 root root) /etc/allthing/agent.conf
 %attr(700 root root) /usr/sbin/at_agent
-%attr(755 root root) /etc/init.d/at_agent
-%attr(644 root root) /usr/share/allthing/config/agent.in
+%attr(644 root root) /usr/share/allthing/at_agent.rc
+%attr(644 root root) /usr/share/allthing/at_agent.service
 
 %post
 /usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin -M allthing
-/sbin/chkconfig --add /etc/init.d/at_agent
-grep '\[agent\]' /etc/allthing.conf &> /dev/null || cat /usr/share/allthing/config/agent.in >> /etc/allthing.conf
-rm -f /tmp/agent.in
+if [ -f /etc/allthing.conf ]; then
+    echo "reinstalling config, copy old config to /etc/allthing/old.conf"
+    /bin/mv /etc/allthing.conf /etc/allthing/old.conf
+    echo "refer to old config to recreate new (sorry)"
+fi
+
+##
+# Install the service
+if [[ "$(pgrep ^systemd$)" == "1" ]]; then
+	/bin/cp /usr/share/allthing/at_agent.service /usr/lib/systemd/system/at_agent.service
+	/bin/systemctl daemon-reload
+	/bin/systemctl disable at_agent
+else
+	/bin/install -groot -oroot -m0755 /usr/share/allthing/at_agent.rc /etc/rc.d/init.d/at_agent
+	/sbin/chkconfig --add at_agent
+	/sbin/chkconfig at_agent off
+fi
+
+%preun
+if [[ "$(pgrep ^systemd$)" == "1" ]]; then
+	/bin/systemctl stop at_agent.service
+	/bin/systemctl disable at_agent.service
+	/bin/rm /usr/lib/systemd/system/at_agent.service
+	/bin/systemctl daemon-reload
+else
+	service at_agent stop
+	/sbin/chkconfig at_agent off
+	/sbin/chkconfig --del at_agent
+	/bin/rm /etc/rc.d/init.d/at_agent
+fi
 
 %changelog
+* Mon Aug 31 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-4
+- RPM spec updates for systemd systems
+* Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-3
+- Fixed config installation
+* Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-1
+- Added licencing.
 * Sun Aug 2 2015 <Jason Russler> jason.russler@gmail.com 0.8.5-1
 - Updates to master, nothing for the agent
 * Sun Jul 26 2015 <Jason Russler> jason.russler@gmail.com 0.8.4-1

@@ -1,6 +1,6 @@
 Name: all-thing-master
-Version: 0.8.5
-Release: 1%{?dist}
+Version: 0.8.6
+Release: 4
 Summary: All thing monitoring collector/server	
  
 Group: Monitors		
@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc jansson-devel
-Requires: glibc jansson all-thing-agent
+Requires: glibc jansson all-thing-agent /bin/cat /bin/mkdir /bin/cp procps-ng
 
 %description
 Monitoring data collection agent and data server.
@@ -24,19 +24,59 @@ make at_master
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}/etc
-mkdir -p %{buildroot}/etc/init.d
+mkdir -p %{buildroot}/etc/allthing
+mkdir -p %{buildroot}/usr/share/allthing
 cp master/at_master %{buildroot}/usr/sbin/
-cp scripts/at_master.rc %{buildroot}/etc/init.d/at_master
+cp config/master.in %{buildroot}/etc/allthing/master.conf
+cp scripts/at_master.rc %{buildroot}/usr/share/allthing/at_master.rc
+cp scripts/at_master.service %{buildroot}/usr/share/allthing/at_master.service
 
 %files
+%config(noreplace) %attr(640 root root) /etc/allthing/master.conf
 %attr(700 root root) /usr/sbin/at_master
-%attr(755 root root) /etc/init.d/at_master
+%attr(644 root root) /usr/share/allthing/at_master.rc
+%attr(644 root root) /usr/share/allthing/at_master.service
 
 %post
 /usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin -M allthing
 chkconfig --add at_master
+if [ -f /etc/allthing.conf ]; then
+    echo "reinstalling config, copy old config to /etc/allthing/oldthing.conf"
+    mv /etc/allthing.conf /etc/allthing/oldthing.conf
+    echo "refer to old config to recreate new (sorry)"
+fi
+
+##
+# Install the service
+if [[ "$(pgrep ^systemd$)" == "1" ]]; then
+	/bin/cp /usr/share/allthing/at_master.service /usr/lib/systemd/system/at_master.service
+	/bin/systemctl daemon-reload
+	/bin/systemctl disable at_master
+else
+	/bin/install -groot -oroot -m0755 /usr/share/allthing/at_master.rc /etc/rc.d/init.d/at_master
+	/sbin/chkconfig --add at_master
+	/sbin/chkconfig at_master off
+fi
+
+%preun
+if [[ "$(pgrep ^systemd$)" == "1" ]]; then
+	/bin/systemctl disable at_master.service
+	/bin/rm -f /usr/lib/systemd/system/at_master.service
+	/bin/systemctl daemon-reload
+else
+	/sbin/chkconfig --del at_master
+	/bin/rm -f /etc/rc.d/init.d/at_master
+fi
 
 %changelog
+* Mon Aug 31 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-4
+- RPM spec updates for system systems
+* Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-3
+- Updated install, forgot to rearrange configs
+* Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-2
+- Busted spec
+* Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-1
+- Added licencing.
 * Sun Aug 2 2015 <Jason Russler> jason.russler@gmail.com 0.8.5-1
 - Globalize sockets so that they can be closed from the master thread while
   the clients are blocked waiting for I/O

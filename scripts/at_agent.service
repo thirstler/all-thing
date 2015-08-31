@@ -1,0 +1,15 @@
+[Unit]
+Description=All Thing Agent Service
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/at_agent.pid
+ExecStart=/usr/sbin/at_agent
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=250s
+
+[Install]
+WantedBy=multi-user.target

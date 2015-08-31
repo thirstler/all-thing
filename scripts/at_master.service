@@ -1,0 +1,15 @@
+[Unit]
+Description=All Thing Master Service
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/at_master.pid
+ExecStart=/usr/sbin/at_master
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+RestartSec=250s
+
+[Install]
+WantedBy=multi-user.target
