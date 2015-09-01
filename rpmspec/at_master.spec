@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc jansson-devel
-Requires: glibc jansson all-thing-agent /bin/cat /bin/mkdir /bin/cp procps-ng
+Requires: glibc jansson all-thing-agent coreutils procps-ng
 
 %description
 Monitoring data collection agent and data server.
@@ -39,7 +39,6 @@ cp scripts/at_master.service %{buildroot}/usr/share/allthing/at_master.service
 
 %post
 /usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin -M allthing
-chkconfig --add at_master
 if [ -f /etc/allthing.conf ]; then
     echo "reinstalling config, copy old config to /etc/allthing/oldthing.conf"
     mv /etc/allthing.conf /etc/allthing/oldthing.conf
@@ -60,12 +59,15 @@ fi
 
 %preun
 if [[ "$(pgrep ^systemd$)" == "1" ]]; then
+    /bin/systemctl stop at_master.service
 	/bin/systemctl disable at_master.service
-	/bin/rm -f /usr/lib/systemd/system/at_master.service
+	/bin/rm /usr/lib/systemd/system/at_master.service
 	/bin/systemctl daemon-reload
 else
+    /usr/sbin/service at_master stop
+	/sbin/chkconfig at_master off
 	/sbin/chkconfig --del at_master
-	/bin/rm -f /etc/rc.d/init.d/at_master
+	/bin/rm /etc/rc.d/init.d/at_master
 fi
 
 %changelog

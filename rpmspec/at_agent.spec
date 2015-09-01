@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc
-Requires: glibc /bin/cat /bin/mkdir /bin/cp procps-ng coreutils
+Requires: glibc procps-ng coreutils
 
 %description
 Monitoring agent for the All-Thing HPC monitoring system
@@ -66,7 +66,7 @@ if [[ "$(pgrep ^systemd$)" == "1" ]]; then
 	/bin/rm /usr/lib/systemd/system/at_agent.service
 	/bin/systemctl daemon-reload
 else
-	service at_agent stop
+	/usr/sbin/service at_agent stop
 	/sbin/chkconfig at_agent off
 	/sbin/chkconfig --del at_agent
 	/bin/rm /etc/rc.d/init.d/at_agent
