@@ -1,6 +1,6 @@
 Name: all-thing-agent
 Version: 0.8.6
-Release: 4
+Release: 4%{?dist}
 Summary: All thing monitoring agent	
  
 Group: Monitors		
@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc
-Requires: glibc procps-ng coreutils
+Requires: glibc coreutils
 
 %description
 Monitoring agent for the All-Thing HPC monitoring system
@@ -54,7 +54,7 @@ if [[ "$(pgrep ^systemd$)" == "1" ]]; then
 	/bin/systemctl daemon-reload
 	/bin/systemctl disable at_agent
 else
-	/bin/install -groot -oroot -m0755 /usr/share/allthing/at_agent.rc /etc/rc.d/init.d/at_agent
+	install -groot -oroot -m0755 /usr/share/allthing/at_agent.rc /etc/rc.d/init.d/at_agent
 	/sbin/chkconfig --add at_agent
 	/sbin/chkconfig at_agent off
 fi
@@ -73,6 +73,8 @@ else
 fi
 
 %changelog
+* Tue Sep 1 2015 <Jason Russler> jason.russler@gmail.com 0.8.7-1
+- Fxed agent for RHEL6, no "availablememory" in /proc/meminfo
 * Mon Aug 31 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-4
 - RPM spec updates for systemd systems
 * Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-3

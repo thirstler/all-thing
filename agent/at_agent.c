@@ -259,7 +259,8 @@ static inline void poll_mem(sysinf_t *host_data)
 
     sscanf(strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
     sscanf(strstr(meminfbuf, "MemFree:"), "MemFree: %lu", &host_data->mem.MemFree);
-    sscanf(strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
+    if(pollflags & MF_MEMAVAILABLE)
+    	sscanf(strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
     sscanf(strstr(meminfbuf, "Buffers:"), "Buffers: %lu", &host_data->mem.Buffers);
     sscanf(strstr(meminfbuf, "Cached:"), "Cached: %lu", &host_data->mem.Cached);
     sscanf(strstr(meminfbuf, "SwapCached:"), "SwapCached: %lu", &host_data->mem.SwapCached);

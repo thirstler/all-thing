@@ -57,22 +57,20 @@ uninstall:
 
 # For creating tarballs for SRPM generation, increment with SPEC files. Master
 # and agent are incremented together for now.s
-VER=0.8.6
-REL=4
+VER=0.8.7
+REL=1\%\{\?dist\}
 
 srcrpms: at_agent-tar at_master-tar
-	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_agent.spec
-	sed -i "s/^Version: .*$$/Version: ${VER}/" rpmspec/at_master.spec
-	sed -i "s/^Release: .*$$/Release: ${REL}/" rpmspec/at_agent.spec
-	sed -i "s/^Release: .*$$/Release: ${REL}/" rpmspec/at_master.spec
-	cp -f rpmspec/at_agent.spec ~/rpmbuild/SPECS
-	cp -f rpmspec/at_master.spec ~/rpmbuild/SPECS
+	cp rpmspec/at_agent.spec ~/rpmbuild/SPECS 
+	cp rpmspec/at_master.spec ~/rpmbuild/SPECS
+	sed -i "s/^Version: .*$$/Version: ${VER}/"  ~/rpmbuild/SPECS/at_agent.spec
+	sed -i "s/^Version: .*$$/Version: ${VER}/"  ~/rpmbuild/SPECS/at_master.spec
+	sed -i "s/^Release: .*$$/Release: ${REL}/"  ~/rpmbuild/SPECS/at_agent.spec
+	sed -i "s/^Release: .*$$/Release: ${REL}/"  ~/rpmbuild/SPECS/at_master.spec
 	cp -f all-thing-agent-${VER}.tar.gz ~/rpmbuild/SOURCES
 	cp -f all-thing-master-${VER}.tar.gz ~/rpmbuild/SOURCES
-	cd ~/rpmbuild
-	rpmbuild -bs --sign rpmspec/at_agent.spec
-	rpmbuild -bs --sign rpmspec/at_master.spec
-	
+	rpmbuild -bs --sign ~/rpmbuild/SPECS/at_agent.spec
+	rpmbuild -bs --sign ~/rpmbuild/SPECS/at_master.spec
 
 at_agent-tar:
 	mkdir -p ./all-thing-agent-${VER}/config

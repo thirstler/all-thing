@@ -1,6 +1,6 @@
 Name: all-thing-master
 Version: 0.8.6
-Release: 4
+Release: 4%{?dist}
 Summary: All thing monitoring collector/server	
  
 Group: Monitors		
@@ -9,7 +9,7 @@ URL: https://github.com/thirstler/all-thing
 Source0: %{name}-%{version}.tar.gz
 
 BuildRequires:	make gcc jansson-devel
-Requires: glibc jansson all-thing-agent coreutils procps-ng
+Requires: glibc jansson all-thing-agent coreutils
 
 %description
 Monitoring data collection agent and data server.
@@ -52,7 +52,7 @@ if [[ "$(pgrep ^systemd$)" == "1" ]]; then
 	/bin/systemctl daemon-reload
 	/bin/systemctl disable at_master
 else
-	/bin/install -groot -oroot -m0755 /usr/share/allthing/at_master.rc /etc/rc.d/init.d/at_master
+	install -groot -oroot -m0755 /usr/share/allthing/at_master.rc /etc/rc.d/init.d/at_master
 	/sbin/chkconfig --add at_master
 	/sbin/chkconfig at_master off
 fi
@@ -71,6 +71,8 @@ else
 fi
 
 %changelog
+* Tue Sep 1 2015 <Jason Russler> jason.russler@gmail.com 0.8.7-1
+- Fxed agent for RHEL6, no "availablememory" in /proc/meminfo
 * Mon Aug 31 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-4
 - RPM spec updates for system systems
 * Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-3
