@@ -35,6 +35,7 @@
 #include <syslog.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <uuid/uuid.h>
 #include "../ini.h"
 #include "../at.h"
 #include "at_agent.h"
@@ -47,8 +48,8 @@
 int on;
 int out_sock;
 int init_flag;
-uint64_t hostid;
-char hexid[17];
+uuid_t hostuuid;
+char uuidstr[40];
 sysinf_t sysinf;
 
 /* Debugging functions *******************************************************/
@@ -140,7 +141,7 @@ static void init_hostdata(sysinf_t *host_data)
     /* Needed from the start */
     set_data_hostname(host_data);
 
-    hostid = 0;
+    memset(hostuuid, '\0', sizeof(uuid_t));
 }
 
 static inline const char* get_mem_val(const char *key, memval_t* val, const char *strptr)
@@ -701,7 +702,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
             "tv_sec",host_data->sample_tv.tv_sec,
             "tv_usec", host_data->sample_tv.tv_usec);
     json_object_set_new(root, "ts", tmpobj);
-    json_object_set_new(root, "hostid", json_string_nocheck(hexid));
+    json_object_set_new(root, "hostid", json_string_nocheck(uuidstr));
 
 
     if(pollsw & RPRT_METADATA) {
@@ -973,8 +974,8 @@ static inline ssize_t report(char *json_str, agent_config_t *cfg)
         bfrptr = sendbuffer;
 
         written = sprintf(bfrptr,
-                "%lx %lx %lx %lx %lx\n",
-                hostid, seq, payload_len, bytes_sent, msgid);
+                "%s %lx %lx %lx %lx\n",
+                hostuuid, seq, payload_len, bytes_sent, msgid);
         bfrptr += written;
 
         memcpy(bfrptr, msgptr, msg_chunk);
@@ -1034,7 +1035,7 @@ static void cleanup(sysinf_t *host_data, agent_config_t *cfg)
     char sendbuffer[255];
 
     /* Report to master that this node has quit and close the socket */
-    sprintf(sendbuffer, "<<%lx exited>>\n", hostid);
+    sprintf(sendbuffer, "<<%s exited>>\n", uuidstr);
     send(out_sock, sendbuffer, strlen(sendbuffer), 0);
     close(out_sock);
 
@@ -1063,42 +1064,23 @@ static void cleanup(sysinf_t *host_data, agent_config_t *cfg)
     if(cfg->config_dir != NULL) free(cfg->config_dir);
 }
 
-
-static uint64_t mkrnd64() {
-    uint64_t n;
-    FILE *r = fopen("/dev/random", "r");
-    if(r == NULL) return 0;
-    printf("%lu\n", sizeof(uint64_t));
-    fread(&n, sizeof(uint64_t), 1, r);
-    fclose(r);
-    return n;
-}
-
-
-
-/* This is a little off the wall since this used to generate a host ID based
- * off of a hash of the host name. Why? I have no idea - now it's just a
- * random number. */
-static uint64_t profile_id(char *forced_id, agent_config_t *cfg)
+/* 
+ * Get our UUID or create one if necessary
+ */
+static int profile_uuid(agent_config_t *cfg, uuid_t uuid)
 {
     FILE *fh;
     char hostid_path[255];
-    char hexid[17];
-    uint64_t id;
+    char idstr[40];
     struct stat fsinfo;
     struct passwd *pw = NULL;
 
-    /* Skip all this junk if we're forcing an id */
-    if(forced_id != NULL)
-        return mkrnd64();
-
     pw = getpwnam(cfg->runuser);
 
-    sprintf(hostid_path, "%s/%s", AGENT_PROFILE_DIR, AGENT_HOSTID_FILE);
+    sprintf(hostid_path, "%s/%s", AGENT_PROFILE_DIR, AGENT_HOSTUUID_FILE);
     fh = fopen(hostid_path, "r");
 
     if(fh == NULL) {
-
 
         /* Directory ? */
         if(stat(AGENT_PROFILE_DIR, &fsinfo) != 0) {
@@ -1108,38 +1090,44 @@ static uint64_t profile_id(char *forced_id, agent_config_t *cfg)
                 goto fail;
             }
         }
-
+        
+        /* Do this anyway for shits and giggles */
         chown(AGENT_PROFILE_DIR, pw->pw_uid, pw->pw_gid);
 
         /* The file */
-        fh = fopen(hostid_path, "a");
+        fh = fopen(hostid_path, "w");
         if(fh == NULL) {
             syslog(LOG_ERR, "can't write to host id file (%s)",
                     hostid_path);
             goto fail;
         }
 
+        /* More gross ownership assurances */
         chown(hostid_path, pw->pw_uid, pw->pw_gid);
         chmod(hostid_path, S_IRUSR|S_IWUSR);
 
-        syslog(LOG_INFO, "generating a random ID for this host...");
+        syslog(LOG_INFO, "generating a random UUID for this host...");
 
-        id = mkrnd64();
-
-        sprintf(hexid, "%lx", id);
+        uuid_generate_random(uuid);
+        uuid_unparse(uuid, idstr);
+        
+        syslog(LOG_INFO, "got id: %s", idstr);
 
         /* Write them to the new profile file */
-        if(fwrite(hexid, sizeof(hexid), 1, fh) == 0) {
+        if(fwrite(idstr, strlen(idstr), 1, fh) == 0) {
             syslog(LOG_ERR, "problem writing to host id file");
             goto fail;
         }
         fclose(fh);
 
-        syslog(LOG_INFO, "finished generating random ID");
-
     } else {
-        fscanf(fh, "%lx", &id);
+        fscanf(fh, "%s", idstr);
         fclose(fh);
+        
+        if(uuid_parse(idstr, uuid) != 0) {
+            unlink(hostid_path);
+            return profile_uuid(cfg, uuid);
+        }
     }
 
     /* Do all of this again for good measure */
@@ -1147,7 +1135,7 @@ static uint64_t profile_id(char *forced_id, agent_config_t *cfg)
     chown(hostid_path, pw->pw_uid, pw->pw_gid);
     chmod(hostid_path, S_IRUSR|S_IWUSR);
 
-    return id;
+    return 1;
 
     fail:
         syslog(LOG_ERR, "can't get host ID, exiting");
@@ -1163,7 +1151,6 @@ int main(int argc, char *argv[])
     int rc;
     char *json_str;
     struct passwd *mememe;
-    char *forced_id = NULL;
     FILE *pidf;
     pid_t mypid;
     char *cfgstrs[2];
@@ -1207,9 +1194,6 @@ int main(int argc, char *argv[])
         case 'D':
             cfg.daemon = 0;
             break;
-        case 'i':
-            forced_id = strdup(optarg);
-            break;
         case 't':
             cfg.report_host = strdup(optarg);
             break;
@@ -1246,15 +1230,11 @@ int main(int argc, char *argv[])
 
     syslog (LOG_CRIT, "starting");
 
-    /* Get this host ID */
-    hostid = profile_id(forced_id, &cfg);
-    if(forced_id != NULL) free(forced_id);
-    host_data->id = hostid;
-    
-    /* Set a string for the hostid */
-    sprintf(hexid, "%lx", hostid);
+    /* Get host ID */
+    profile_uuid(&cfg, hostuuid);
 
-    syslog(LOG_INFO, "using host id %lx", hostid);
+    /* Set a string version of the UUID for later use */
+    uuid_unparse(hostuuid, uuidstr);
 
     /* forking */
     if(cfg.daemon) {

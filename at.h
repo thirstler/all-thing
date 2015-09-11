@@ -24,6 +24,8 @@
 #ifndef AT_H_
 #define AT_H_
 
+#include <uuid/uuid.h>
+
 /* Default configuration values */
 
 /* Config dir WITH trailing slash :-) */
@@ -174,6 +176,7 @@ typedef struct meminf_s {
 typedef struct sysinf_s {
     char *hostname;
     uint64_t id;
+    uuid_t uuid;
     struct timeval sample_tv;
 
     /* Load and process information */

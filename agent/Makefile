@@ -3,7 +3,7 @@ CJSON_OBJS:=../cJSON.o
 #endif
 CC=gcc
 CFLAGS=-g -m64 -Wall -O1 ${CJSONFLAGS}
-LDFLAGS=-g -lm -ljansson -lpthread
+LDFLAGS=-g -lm -ljansson -lpthread -luuid
 AGENT_OBJECTS=../ini.o cpuops.o at_agent.o fsops.o iodevops.o ifaceops.o ${CJSON_OBJS}
 
 at_agent: ${AGENT_OBJECTS}

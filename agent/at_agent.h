@@ -46,6 +46,7 @@
 #define AGENT_CONFIG_FILE "agent.conf"
 #define AGENT_PROFILE_DIR "/var/db/allthing"
 #define AGENT_HOSTID_FILE "host_id"
+#define AGENT_HOSTUUID_FILE "host_uuid"
 
 /* random defaults */
 #define MAX_HOSTNAME_SIZE 255
@@ -69,8 +70,6 @@ Arguments:\n\
   -D, --nofork          do not fork into a daemon (usefule for debugging)\n\
   -p, --port=PORT       change the reporting port\n\
   -t, --target=HOST     change target (at_master) host for data reports\n\
-  -i, --forceid=ID      use arbitrary string for node ID (text is hashed to\n\
-                        generate node ID)\n\
   -r, --pollrate=MS     change system information gathering poll rate, rate\n\
                         is set in milliseconds\n\
   -c, --config=FILE     use a different config file\n\
