@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS:=-g -m64 -Wall -O1
-LDFLAGS:=-g -lm -ljansson -lpthread -lpq
+LDFLAGS:=-g -lm -ljansson -lpthread -lpq -luuid
 
 at_master: mstr_dataops.o mstr_listener.o at_master.o mstr_datasrv.o at_db.o
 	${CC} ${LDFLAGS} mstr_datasrv.o mstr_dataops.o mstr_listener.o at_master.o ../ini.o at_db.o -o at_master

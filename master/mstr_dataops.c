@@ -32,6 +32,7 @@
 #include <jansson.h>
 #include <libpq-fe.h>
 #include <time.h>
+#include <uuid/uuid.h>
 #include "../at.h"
 #include "at_master.h"
 
@@ -45,12 +46,12 @@ void free_obj_rec(obj_rec_t *dobj)
     free(dobj);
 }
 
-int rm_obj_rec(uint64_t id, master_global_data_t *data)
+int rm_obj_rec(uuid_t uuid, master_global_data_t *data)
 {
     size_t i;
 
     for(i = 0; i < data->obj_rec_sz; i += 1) {
-        if(id == data->obj_rec[i]->id) {
+        if( uuid_compare(uuid, data->obj_rec[i]->uuid) == 0) {
             free_obj_rec(data->obj_rec[i]);
             data->obj_rec_sz -= 1;
             for(;i < data->obj_rec_sz; i += 1)
@@ -61,25 +62,30 @@ int rm_obj_rec(uint64_t id, master_global_data_t *data)
     return EXIT_SUCCESS;
 }
 
-obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data)
+obj_rec_t* get_obj_rec(uuid_t uuid, master_global_data_t *data)
 {
+    static char idstr[40]; 
+    
     // Brute force for now, I'll get fancy later
     size_t i;
     for(i=0; i < data->obj_rec_sz; i += 1) {
-        if(id == data->obj_rec[i]->id) {
-            syslog(LOG_DEBUG, "get_data_obj() found id %lx", id);
+        if( uuid_compare(uuid, data->obj_rec[i]->uuid) == 0 ) {
+            syslog(LOG_DEBUG,
+                    "get_data_obj() found something at position %lu", i);
             return data->obj_rec[i];
         }
     }
-    syslog(LOG_DEBUG, "no object with id %lx in store", id);
+    uuid_unparse(uuid, idstr);
+    syslog(LOG_DEBUG, "no object with id %s in store", idstr);
     return NULL;
 }
 
+/* Just shove it on the end, get fancy laster */
 int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
 {
     size_t i;
 
-    if(newobj->id==0) return EXIT_FAILURE;
+    if( uuid_is_null(newobj->uuid) ) return EXIT_FAILURE;
 
     if( master->obj_rec_sz >= DATA_STRUCT_AR_SIZE) {
         syslog(LOG_ERR, "data buffer full, increase to > %d",
@@ -88,7 +94,8 @@ int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
     }
 
     for(i=0; i < master->obj_rec_sz; i += 1) {
-        if( newobj->id == master->obj_rec[i]->id) return EXIT_FAILURE;
+        if( uuid_compare(newobj->uuid, master->obj_rec[i]->uuid) == 0 )
+            return EXIT_FAILURE;
     }
 
     newobj->commit_rate = cfg->def_commit_rate;
@@ -97,8 +104,7 @@ int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj)
     master->obj_rec[master->obj_rec_sz] = newobj;
     master->obj_rec_sz += 1;
 
-    syslog(LOG_DEBUG, "add_new_data_obj() added %lx, new size %lu\n",
-             newobj->id, master->obj_rec_sz);
+    syslog(LOG_DEBUG, "add_new_data_obj(), new size %lu", master->obj_rec_sz);
 
     return EXIT_SUCCESS;
 }

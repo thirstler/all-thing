@@ -152,14 +152,17 @@ void write_agent_to_cache(obj_rec_t* data, int new)
     double intvl_cnt = 0;
     PGresult *qr;
     ExecStatusType pqrc;
-
+    char uuidstr[40];
+    
+    uuid_unparse(data->uuid, uuidstr);
+    
     if (new > 0) {
         snprintf(query, MAX_QUERY_LEN, INSERT_TMP_SBL_SQL,
-                (int64_t)data->id, "12/31/1969", 0, 0,
+                uuidstr, "12/31/1969", 0, 0,
                 "{}","{}","{}","{}","{}","{}","{}","{}","{}","{}");
         qr = PQexec(pgconn, query);
         if(PQresultStatus(qr) == PGRES_COMMAND_OK) {
-            syslog(LOG_INFO, "created cache entry for %lx", data->id);
+            syslog(LOG_INFO, "created cache entry for %s", uuidstr);
         }
         PQclear(qr);
     }
@@ -217,7 +220,7 @@ void write_agent_to_cache(obj_rec_t* data, int new)
             iface,
             iodev,
             fs,
-            data->id);
+            uuidstr);
 
     if( (pqrc = PQresultStatus(qr = PQexec(pgconn, query))) == PGRES_COMMAND_OK) {
         syslog(LOG_DEBUG, "good query: %s", query);
@@ -243,7 +246,7 @@ void write_agent_to_cache(obj_rec_t* data, int new)
 void init_record_tbl(obj_rec_t* data)
 {
     char q[1024];
-    sprintf(q, INIT_RECORD_TABLE, data->id);
+    sprintf(q, INIT_RECORD_TABLE, data->uuid);
     PQclear(PQexec(pgconn, q));
 
 }
@@ -271,7 +274,7 @@ int snap_rec_tbl(obj_rec_t *obj_rec)
     }
 
 
-    sprintf(query, INIT_RECORD_TABLE, obj_rec->id);
+    sprintf(query, INIT_RECORD_TABLE, obj_rec->uuid);
     PQclear(PQexec(pgconn, query));
 
     misc = json_dumps(json_object_get(
@@ -325,7 +328,7 @@ int snap_rec_tbl(obj_rec_t *obj_rec)
     if(fsinf == NULL) fsinf = nullobj;
 
     sprintf(query, INSERT_RECORD_TABLE,
-            obj_rec->id,
+            obj_rec->uuid,
             ctime(&nownow),
             ts.tv_sec,
             ts.tv_usec,

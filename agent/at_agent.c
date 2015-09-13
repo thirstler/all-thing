@@ -413,7 +413,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
     cJSON *devptr;
     
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "hostid", hexid);
+    cJSON_AddStringToObject(root, "uuid", host_data->uuidstr);
     
     cJSON *misc = cJSON_CreateObject();
     cJSON_AddStringToObject(misc, "hostname", host_data->hostname);
@@ -702,7 +702,7 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
             "tv_sec",host_data->sample_tv.tv_sec,
             "tv_usec", host_data->sample_tv.tv_usec);
     json_object_set_new(root, "ts", tmpobj);
-    json_object_set_new(root, "hostid", json_string_nocheck(uuidstr));
+    json_object_set_new(root, "uuid", json_string_nocheck(host_data->uuidstr));
 
 
     if(pollsw & RPRT_METADATA) {
@@ -975,7 +975,9 @@ static inline ssize_t report(char *json_str, agent_config_t *cfg)
 
         written = sprintf(bfrptr,
                 "%s %lx %lx %lx %lx\n",
-                hostuuid, seq, payload_len, bytes_sent, msgid);
+                uuidstr, seq, payload_len,
+                bytes_sent, msgid);
+                
         bfrptr += written;
 
         memcpy(bfrptr, msgptr, msg_chunk);
@@ -1035,7 +1037,7 @@ static void cleanup(sysinf_t *host_data, agent_config_t *cfg)
     char sendbuffer[255];
 
     /* Report to master that this node has quit and close the socket */
-    sprintf(sendbuffer, "<<%s exited>>\n", uuidstr);
+    sprintf(sendbuffer, "<<%s exited>>\n", host_data->uuidstr);
     send(out_sock, sendbuffer, strlen(sendbuffer), 0);
     close(out_sock);
 
@@ -1230,11 +1232,13 @@ int main(int argc, char *argv[])
 
     syslog (LOG_CRIT, "starting");
 
-    /* Get host ID */
+    /* Get UUID and set global vars for binary and char representations */
     profile_uuid(&cfg, hostuuid);
-
-    /* Set a string version of the UUID for later use */
     uuid_unparse(hostuuid, uuidstr);
+
+    /* copy to the host data struct for shits and giggles */
+    memcpy(host_data->uuid, hostuuid, sizeof(uuid_t));
+    strncpy(host_data->uuidstr, uuidstr, 37);
 
     /* forking */
     if(cfg.daemon) {

@@ -35,6 +35,7 @@
 #include <libpq-fe.h>
 #include <jansson.h>
 #include <pthread.h>
+#include <uuid/uuid.h>
 #include "../at.h"
 #include "at_master.h"
 
@@ -69,9 +70,9 @@ static json_t *getpath(const char *path, json_t *root)
 static char* parse_query(json_t *query, master_global_data_t *dptr)
 {
     obj_rec_t *qresult;
-    uint64_t id;
+    uuid_t uuid;
     /* boatloads of json object for juggling the query */
-    json_t    *outter_val, \
+    json_t  *outter_val, \
             *inner_val, \
             *answerobj, \
             *answerobjs, \
@@ -111,14 +112,12 @@ static char* parse_query(json_t *query, master_global_data_t *dptr)
     json_object_set(answerobj, "result", answerobjs);
 
     for(o_index = 0; o_index < json_array_size(hostarr); o_index += 1) {
-
-        /* Get the host ID */
-        sscanf(json_string_value(
-                outter_val = json_array_get(hostarr, o_index)), "%lx", &id);
-
+        
+        uuid_parse(json_string_value(
+                outter_val = json_array_get(hostarr, o_index)), uuid);
+        
         /* Find that host in the master data object or go home*/
-        qresult = get_obj_rec(id, dptr);
-        if(qresult == NULL) continue;
+        if ( (qresult = get_obj_rec(uuid, dptr)) == NULL ) continue;
 
         /* Create response object for this host */
         o_objtmp = json_object();
@@ -170,8 +169,8 @@ inline static void q_list_objs(int fd, master_global_data_t *dptr)
 
     for(i = 0; i < dptr->obj_rec_sz; i+=1) {
         jobjbf = json_object();
-        json_object_set(jobjbf, "id",
-                json_object_get(dptr->obj_rec[i]->record, "hostid"));
+        json_object_set(jobjbf, "uuid",
+                json_object_get(dptr->obj_rec[i]->record, "uuid"));
         json_object_set(jobjbf, "hostname",
                 json_object_get(
                         json_object_get(dptr->obj_rec[i]->record,

@@ -175,8 +175,8 @@ typedef struct meminf_s {
 
 typedef struct sysinf_s {
     char *hostname;
-    uint64_t id;
     uuid_t uuid;
+    char uuidstr[37];
     struct timeval sample_tv;
 
     /* Load and process information */

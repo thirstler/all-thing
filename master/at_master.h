@@ -38,6 +38,7 @@
 
 /*
  * Default root-level keys to try and calculate data rates in.
+ * THIS SHOULD BE CONFIGURABLE!
  */
 #define CALC_RATE_KEYS {"cpus", "cpu_ttls", "iodev", "iface"}
 
@@ -64,8 +65,11 @@
 #define ASMBL_BUF_PRUNE_COUNT 500
 #define MASTER_ASMBL_BUF_AGE 15
 
+
+#define MAX_DATASRV_QUERY 1024
+
 #define INIT_TMP_SBL_SQL "CREATE TABLE IF NOT EXISTS agent_cache (\
-hostid        bigint PRIMARY KEY,\
+uuid          char[37] PRIMARY KEY,\
 timestamp     timestamp NOT NULL,\
 intvl_cnt     interval NULL,\
 misc          json NULL,\
@@ -81,7 +85,7 @@ fsinf         json NULL\
 )"
 
 #define INSERT_TMP_SBL_SQL "INSERT INTO agent_cache (\
-hostid,\
+uuid,\
 timestamp,\
 intvl_cnt,\
 misc,\
@@ -93,7 +97,7 @@ cpu_static,\
 cpu,\
 iface,\
 iodev,\
-fsinf) VALUES (%li,'%s', '%d  second %d microsecond', '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')"
+fsinf) VALUES ('%s','%s', '%d  second %d microsecond', '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')"
 
 #define UPDATE_TMP_SBL_SQL "UPDATE agent_cache SET \
 timestamp = '%s',\
@@ -107,11 +111,11 @@ cpu_static = '%s',\
 cpu = '%s',\
 iface = '%s',\
 iodev = '%s',\
-fsinf = '%s' WHERE hostid = %li"
+fsinf = '%s' WHERE uuid = '%s'"
 
 #define DROP_TMP_SBL_SQL "DROP TABLE IF EXISTS agent_cache"
 
-#define INIT_RECORD_TABLE "CREATE TABLE IF NOT EXISTS \"%lx\" (\
+#define INIT_RECORD_TABLE "CREATE TABLE IF NOT EXISTS \"%s\" (\
 id            serial primary key,\
 timestamp     timestamp NOT NULL,\
 intvl_cnt     interval,\
@@ -127,7 +131,7 @@ iodev         json NULL,\
 fsinf         json NULL\
 )"
 
-#define INSERT_RECORD_TABLE "INSERT INTO \"%lx\" (\
+#define INSERT_RECORD_TABLE "INSERT INTO \"%s\" (\
 timestamp,\
 intvl_cnt,\
 misc,\
@@ -141,7 +145,7 @@ iface,\
 iodev,\
 fsinf) VALUES ('%s', '%d second %d microsecond', '%s','%s','%s','%s','%s','%s','%s','%s','%s','%s')"
 
-#define UPDATE_RECORD_TABLE "UPDATE '%lx' SET \
+#define UPDATE_RECORD_TABLE "UPDATE \"%s\" SET \
 timestamp = %s',\
 intvl_cnt = '%d second %d microsecond',\
 misc = '%s',\
@@ -193,7 +197,7 @@ typedef struct master_config_s {
 } master_config_t;
 
 typedef struct json_str_assembly_bfr_s {
-    uint64_t id;
+    uuid_t uuid;
     struct timeval ts;
     size_t charcount;
     uint64_t msgid;
@@ -203,7 +207,7 @@ typedef struct json_str_assembly_bfr_s {
 } json_str_assembly_bfr_t;
 
 typedef struct rprt_hdr_s {
-    uint64_t hostid;
+    uuid_t uuid;
     uint64_t seq;
     uint64_t msg_sz;
     uint64_t offset;
@@ -212,7 +216,7 @@ typedef struct rprt_hdr_s {
 } rprt_hdr_t;
 
 typedef struct obj_rec_s {
-    uint64_t id;
+    uuid_t uuid;
     time_t commit_rate;
     time_t last_commit;
     json_t *record;
@@ -226,7 +230,7 @@ typedef struct data_op {
 typedef struct master_global_data_s {
     obj_rec_t **obj_rec;
     size_t obj_rec_sz;
-    data_op_t data_ops_queue[16384];
+    data_op_t data_ops_queue[DATA_STRUCT_AR_SIZE];
 } master_global_data_t;
 
 
@@ -249,7 +253,7 @@ void *server_listener(void *dptr);
 /**
  * Fetch record with ID "id" from the master system data object
  */
-obj_rec_t* get_obj_rec(uint64_t id, master_global_data_t *data);
+obj_rec_t* get_obj_rec(uuid_t uuid, master_global_data_t *data);
 
 /**
  * Add obj_rec_t pointer to the master data object. Does not copy data so
@@ -259,7 +263,7 @@ int add_obj_rec(master_global_data_t *master, obj_rec_t *newobj);
 /**
  * Remove data object "id" from the master system data object
  */
-int rm_obj_rec(uint64_t id, master_global_data_t *data);
+int rm_obj_rec(uuid_t uuid, master_global_data_t *data);
 
 /**
  * Free a data object. Simply calls json_decref() and frees the struct. May
@@ -282,7 +286,8 @@ json_t* get_these_rates(
         size_t num_fields);
 
 /*
- * Build connection string and connect (eats values from cfg)
+ * Build connection string and connect (eats values from cfg so they don't
+ * hang around in memory).
  */
 PGconn *db_connect(master_config_t *cfg);
 
