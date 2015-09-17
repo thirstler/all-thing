@@ -69,7 +69,7 @@
 #define MAX_DATASRV_QUERY 1024
 
 #define INIT_TMP_SBL_SQL "CREATE TABLE IF NOT EXISTS agent_cache (\
-uuid          char[37] PRIMARY KEY,\
+uuid          uuid PRIMARY KEY,\
 timestamp     timestamp NOT NULL,\
 intvl_cnt     interval NULL,\
 misc          json NULL,\
@@ -217,6 +217,7 @@ typedef struct rprt_hdr_s {
 
 typedef struct obj_rec_s {
     uuid_t uuid;
+    char   uuidstr[37];
     time_t commit_rate;
     time_t last_commit;
     json_t *record;

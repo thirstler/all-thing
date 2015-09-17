@@ -186,7 +186,7 @@ static void apply_assmb_buf(
     obj_rec_t *incomming = malloc(sizeof(obj_rec_t));
     time_t nownow = time(NULL);
     const char *rate_list[] = CALC_RATE_KEYS;
-    static char uuidstr[40];    
+    static char uuidstr[37];    
     
     incomming->record = json_loads(assembly_buffer->json_str, 0, &error);
     uuid_unparse(assembly_buffer->uuid, uuidstr);
@@ -198,8 +198,10 @@ static void apply_assmb_buf(
         free(incomming);
         return;
     }
+    
     uuid_copy(incomming->uuid, assembly_buffer->uuid);
-
+    memcpy(incomming->uuidstr, uuidstr, 37);
+    
     syslog(LOG_DEBUG, "successfully encoded JSON object with id %s",
             uuidstr);
 

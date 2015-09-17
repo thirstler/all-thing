@@ -444,8 +444,6 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         fsptr = host_data->fsinf;
         while(fsptr != NULL) {
 
-            printf("->%s, %s\n", fsptr->mountpoint, fsptr->fstype);
-
             if(fsptr->fstype == NULL) {
                 fsptr->fstype = strdup("0x0");
             }

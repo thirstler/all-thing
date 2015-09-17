@@ -221,7 +221,7 @@ void write_agent_to_cache(obj_rec_t* data, int new)
             iodev,
             fs,
             uuidstr);
-
+    
     if( (pqrc = PQresultStatus(qr = PQexec(pgconn, query))) == PGRES_COMMAND_OK) {
         syslog(LOG_DEBUG, "good query: %s", query);
     } else {
@@ -328,7 +328,7 @@ int snap_rec_tbl(obj_rec_t *obj_rec)
     if(fsinf == NULL) fsinf = nullobj;
 
     sprintf(query, INSERT_RECORD_TABLE,
-            obj_rec->uuid,
+            obj_rec->uuidstr,
             ctime(&nownow),
             ts.tv_sec,
             ts.tv_usec,
@@ -342,6 +342,8 @@ int snap_rec_tbl(obj_rec_t *obj_rec)
             iface,
             iodev,
             fsinf);
+
+    printf("%s\n", query);
 
     if( (pqrc = PQresultStatus(qr = PQexec(pgconn, query))) == PGRES_COMMAND_OK) {
         syslog(LOG_DEBUG, "good query: %s", query);

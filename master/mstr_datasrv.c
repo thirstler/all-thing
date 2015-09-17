@@ -78,7 +78,7 @@ static char* parse_query(json_t *query, master_global_data_t *dptr)
             *answerobjs, \
             *o_objtmp, \
             *i_objtmp, \
-            *hostarr = json_object_get(query, "hostid"),
+            *hostarr = json_object_get(query, "uuid"),
             *queryarr = json_object_get(query, "get");
     size_t o_index, i_index;
     struct timeval ts;
@@ -86,11 +86,11 @@ static char* parse_query(json_t *query, master_global_data_t *dptr)
     char *result_str;
 
     if(hostarr == NULL) {
-        return strdup("{\"ERROR\":\"no 'hostid' present in query\"}");
+        return strdup("{\"ERROR\":\"no 'uuid' present in query\"}");
     }
     if(json_is_array(hostarr) == 0) {
         return strdup(
-            "{\"ERROR\":\"'hostid' found in query but it's not an array\"}");
+            "{\"ERROR\":\"'uuid' found in query but it's not an array\"}");
     }
 
     if(queryarr == NULL) {
