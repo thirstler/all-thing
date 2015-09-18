@@ -1,7 +1,5 @@
 CJSONFLAGS:=-DUSE_CJSON
-#ifdef ${CJSONFLAGS}
 CJSON_OBJS:=cJSON.o
-#endif
 CC=gcc
 CFLAGS:=-g -m64 -Wall -O1 ${CJSONFLAGS}
 LDFLAGS:=-g -lm -ljansson -lpthread
@@ -12,7 +10,7 @@ AGENT_TL_OBJECTS=agent/Makefile ini.o ${CJSON_OBJS}
 all: at_agent at_master 
 
 at_agent: ${AGENT_TL_OBJECTS}
-	cd agent && CJSONFLAGS=${CJSONFLAGS} make
+	cd agent && make
 
 at_master: master/Makefile ini.o
 	cd master && make
@@ -30,6 +28,7 @@ install-agent: at_agent
 	[ -d /etc/allthing ] || mkdir -p /etc/allthing
 	/usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin allthing
 	install -s -groot -oallthing -m0700 ./agent/at_agent ${DESTDIR}/usr/sbin/at_agent
+	[ -f ${DESTDIR}/etc/allthing.conf ] && mv ${DESTDIR}/etc/allthing.conf ${DESTDIR}/etc/allthing/allthing.conf.OLD || echo "no"
 	[ -f ${DESTDIR}/etc/allthing/allthing.conf ] || install -groot -oroot -m0640 ./config/allthing.conf ${DESTDIR}/etc/allthing/allthing.conf
 	[ -f ${DESTDIR}/etc/allthing/agent.conf ] || install -groot -oroot -m0640 ./config/agent.in ${DESTDIR}/etc/allthing/agent.conf
 	install -groot -oallthing -m755 ./scripts/at_agent.rc /etc/init.d/at_agent
@@ -40,6 +39,7 @@ install-master: at_master
 	[ -d /etc ] || mkdir /etc
 	/usr/bin/id allthing &> /dev/null || useradd -c "All Thing User" -s /sbin/nologin allthing
 	install -s -groot -oallthing -m0700 ./master/at_master ${DESTDIR}/usr/sbin/at_master
+	[ -f ${DESTDIR}/etc/allthing.conf ] && mv ${DESTDIR}/etc/allthing.conf ${DESTDIR}/etc/allthing/allthing.conf.OLD || echo "no"
 	[ -f ${DESTDIR}/etc/allthing/allthing.conf ] || install -groot -oroot -m0640 ./config/allthing.conf ${DESTDIR}/etc/allthing/allthing.conf
 	[ -f ${DESTDIR}/etc/allthing/master.conf ] || install -groot -oroot -m0640 ./config/master.in ${DESTDIR}/etc/allthing/master.conf
 	install -groot -oallthing -m755 ./scripts/at_master.rc /etc/init.d/at_master
@@ -63,14 +63,14 @@ REL=1\%\{\?dist\}
 srcrpms: at_agent-tar at_master-tar
 	cp rpmspec/at_agent.spec ~/rpmbuild/SPECS 
 	cp rpmspec/at_master.spec ~/rpmbuild/SPECS
-	sed -i "s/^Version: .*$$/Version: ${VER}/"  ~/rpmbuild/SPECS/at_agent.spec
-	sed -i "s/^Version: .*$$/Version: ${VER}/"  ~/rpmbuild/SPECS/at_master.spec
-	sed -i "s/^Release: .*$$/Release: ${REL}/"  ~/rpmbuild/SPECS/at_agent.spec
-	sed -i "s/^Release: .*$$/Release: ${REL}/"  ~/rpmbuild/SPECS/at_master.spec
+	sed -i "s/^Version: .*$$/Version: ${VER}/" ~/rpmbuild/SPECS/at_agent.spec
+	sed -i "s/^Version: .*$$/Version: ${VER}/" ~/rpmbuild/SPECS/at_master.spec
+	sed -i "s/^Release: .*$$/Release: ${REL}/" ~/rpmbuild/SPECS/at_agent.spec
+	sed -i "s/^Release: .*$$/Release: ${REL}/" ~/rpmbuild/SPECS/at_master.spec
 	cp -f all-thing-agent-${VER}.tar.gz ~/rpmbuild/SOURCES
 	cp -f all-thing-master-${VER}.tar.gz ~/rpmbuild/SOURCES
-	rpmbuild -bs --sign ~/rpmbuild/SPECS/at_agent.spec
-	rpmbuild -bs --sign ~/rpmbuild/SPECS/at_master.spec
+	rpmbuild -bs ~/rpmbuild/SPECS/at_agent.spec
+	rpmbuild -bs ~/rpmbuild/SPECS/at_master.spec
 
 at_agent-tar:
 	mkdir -p ./all-thing-agent-${VER}/config
