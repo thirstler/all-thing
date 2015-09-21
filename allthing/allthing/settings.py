@@ -38,7 +38,8 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'home',
-    'login'
+    'at_login',
+    'at_client'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -105,3 +106,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+
+AT_CLIENT = {
+    'HOST': 'el7-buildhost',
+    'PORT': 4569
+}
