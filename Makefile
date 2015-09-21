@@ -6,6 +6,7 @@ LDFLAGS:=-g -lm -ljansson -lpthread
 DESTDIR:=
 MASTER_LDFLAGS:=${LDFLAGS} -lpq
 AGENT_TL_OBJECTS=agent/Makefile ini.o ${CJSON_OBJS}
+VER=0.8.8
 
 all: at_agent at_master 
 
@@ -57,7 +58,6 @@ uninstall:
 
 # For creating tarballs for SRPM generation, increment with SPEC files. Master
 # and agent are incremented together for now.s
-VER=0.8.7
 REL=1\%\{\?dist\}
 
 srcrpms: at_agent-tar at_master-tar

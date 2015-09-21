@@ -73,6 +73,8 @@ else
 fi
 
 %changelog
+* Sat Sep 19 2015 <Jason Russler> jason.russler@gmail.com 0.8.8-1
+- New build for v8.8
 * Tue Sep 1 2015 <Jason Russler> jason.russler@gmail.com 0.8.7-1
 - Fxed agent for RHEL6, no "availablememory" in /proc/meminfo
 * Mon Aug 31 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-4
@@ -81,26 +83,3 @@ fi
 - Fixed config installation
 * Sun Aug 30 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-1
 - Added licencing.
-* Sun Aug 2 2015 <Jason Russler> jason.russler@gmail.com 0.8.5-1
-- Updates to master, nothing for the agent
-* Sun Jul 26 2015 <Jason Russler> jason.russler@gmail.com 0.8.4-1
-- Fixed some issues with stat() on ISO9660 file systems
-- Added selector for parsing meminfo since some of that is a little
-  dynamic (1G huge pages not present on systems with <=1G mem is one case)
-* Tue Oct 28 2014 <Jason Russler> jason.russler@gmail.com 0.8.1-1
-- Updated agent to handle counter prefixes so that rates can be processed
-  correctly on the other end
-* Tue Oct 21 2014 <Jason Russler> jason.russler@gmail.com 0.8-2
-- fixed busted agent RPM
-* Sat Oct 18 2014 <Jason Russler> jason.russler@gmail.com 0.8-1
-- Updated to all-thing version 0.8
-* Sun Aug 31 2014 <Jason Russler> jason.russler@gmail.com 0.7-1
-- Added init scripts
-* Mon Aug 25 2014 <Jason Russler> jason.russler@gmail.com 0.6-1
-- Started database backend work, many fixes added
-* Mon Jun 2 2014 <Jason Russler> jason.russler@gmail.com 0-0.5.1
-- Agent won't report inactive network or block devices
-* Sun Jun 1 2014 <Jason Russler> jason.russler@gmail.com 0-0.5
-- Working bare-bones agent
-* Thu Feb 27 2014 <Jason Russler> jason.russler@gmail.com 0-0.2
-- Initial RPM build
