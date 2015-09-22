@@ -3,6 +3,16 @@ from django.http import HttpResponse
 
 # Create your views here.
 
-def login(request):
+def index(request):
 
-    return HttpResponse("Sod off", content_type="text/plain")
+    return HttpResponse("Sod off")
+
+
+def auth(request):
+
+    return HttpResponse("Auth off")
+
+
+def logout(request):
+
+    return HttpResponse("Log off")

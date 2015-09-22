@@ -4,7 +4,7 @@
 #
 # description: Control the all-thing agent process 
 # processname: at_agent
-# config: /etc/allthing.conf
+# config: /etc/allthing/agent.conf
 # pidfile: /var/run/at_agent.pid
 
 # chkconfig: 2345 60 20
