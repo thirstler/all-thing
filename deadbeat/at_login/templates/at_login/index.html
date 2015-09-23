@@ -1,0 +1,41 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>{{ html_title }}</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'allthing/main.css' %}" />
+</head>
+
+<body>
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+<p>allthing</p>
+<form action="at_login" method="post">
+{% csrf_token %}
+    <div style="position: absolute;bottom:31%;left:15%;background-color:gray;color:white;border:1px solid blue;">
+        <table style="width:400px">
+            <tr>
+                <td colspan="2" style="font-size:22px;padding:10px">Log in:</td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Username: </td>
+                <td><input type="text" name="at_username" id="at_username" value="" label="Username" class="form_field"/></td>
+            </tr>
+            <tr>
+                <td style="text-align:right">Password: </td>
+                <td><input type="password" name="at_password" id="at_password" value="" label="Password" class="form_field"/></td>
+            </tr>
+            <tr>
+                <td colspan="2" style="font-size:22px;padding:10px">
+                    <input type="submit" name="at_submit_login" id="at_submit_login" class="form_button" value="Go" />
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</form>
+</body>
+
+</html>
