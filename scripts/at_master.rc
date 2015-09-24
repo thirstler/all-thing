@@ -4,7 +4,7 @@
 #
 # description: Control the all-thing master process 
 # processname: at_master
-# config: /etc/allthing.conf
+# config: /etc/allthing/master.conf
 # pidfile: /var/run/at_master.pid
 
 # chkconfig: 2345 60 20

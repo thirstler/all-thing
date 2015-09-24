@@ -98,4 +98,7 @@ clean:
 	cd agent && make clean
 	cd master && make clean
 	rm -f *.o at_agent at_master *.tar *.tar.gz core.*
+	find ./allthing -type f -name "*.pyc" -exec rm -f {} +
+	find ./allthing -type d -name "__pycache__" -exec rmdir {} + 
+
 	

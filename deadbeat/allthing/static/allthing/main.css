@@ -1,0 +1,19 @@
+BODY {
+    background-color: silver;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+}
+
+
+
+.form_field {
+    border: 1px solid blue;
+    background-color: white;
+    color: black;
+    padding: 2px;
+}
+.form_button {
+    border: 1px solid blue;
+    background-color: white;
+    color: black;
+}
