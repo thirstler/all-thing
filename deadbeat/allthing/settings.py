@@ -113,4 +113,4 @@ AT_CLIENT = {
     'PORT': 4569
 }
 
-LOGIN_URL="at_login"
+LOGIN_URL="/at_login/"

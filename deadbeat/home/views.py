@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.template import RequestContext, loader
 
 # Create your views here.
-@login_required()
+@login_required
 
 def home_landing(request):
 
