@@ -73,8 +73,10 @@ else
 fi
 
 %changelog
+* Thu Sep 24 2015 <Jason Russler> jason.russler@gmail.com 0.8.9-1
+- New build for v0.8.9
 * Sat Sep 19 2015 <Jason Russler> jason.russler@gmail.com 0.8.8-1
-- New build for v8.8
+- New build for v0.8.8
 * Tue Sep 1 2015 <Jason Russler> jason.russler@gmail.com 0.8.7-1
 - Fxed agent for RHEL6, no "availablememory" in /proc/meminfo
 * Mon Aug 31 2015 <Jason Russler> jason.russler@gmail.com 0.8.6-4

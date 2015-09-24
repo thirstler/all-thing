@@ -6,7 +6,7 @@ LDFLAGS:=-g -lm -ljansson -lpthread
 DESTDIR:=
 MASTER_LDFLAGS:=${LDFLAGS} -lpq
 AGENT_TL_OBJECTS=agent/Makefile ini.o ${CJSON_OBJS}
-VER=0.8.8
+VER=0.8.9
 
 all: at_agent at_master 
 
