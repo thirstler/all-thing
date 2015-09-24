@@ -98,6 +98,6 @@ clean:
 	cd agent && make clean
 	cd master && make clean
 	rm -f *.o at_agent at_master *.tar *.tar.gz core.*
-	find ./allthing -type f -name "*.pyc" -exec rm -f {} + || echo "nothing to clean"
-	find ./allthing -type d -name "__pycache__" -exec rmdir {} + || echo "nothing to clean"
+	find ./deadbeat -type f -name "*.pyc" -exec rm -f {} + || echo "nothing to clean"
+	find ./deadbeat -type d -name "__pycache__" -exec rmdir {} + || echo "nothing to clean"
 
