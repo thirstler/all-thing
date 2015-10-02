@@ -1,0 +1,83 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<!--[if IE 9]><html class="ie9 login-pf"><![endif]-->
+<!--[if gt IE 9]><!-->
+<html class="login-pf">
+<!--<![endif]-->
+  <head>
+    <title>{{ html_title }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="{% static 'allthing/patternfly2/resources/img/favicon.ico' %}">
+    <!-- iPad retina icon -->
+    <link rel="apple-touch-icon-precomposed" sizes="152x152" href="{% static 'img/apple-touch-icon-precomposed-152.png' %}">
+    <!-- iPad retina icon (iOS < 7) -->
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="{% static 'img/apple-touch-icon-precomposed-144.png' %}">
+    <!-- iPad non-retina icon -->
+    <link rel="apple-touch-icon-precomposed" sizes="76x76" href="{% static 'img/apple-touch-icon-precomposed-76.png' %}">
+    <!-- iPad non-retina icon (iOS < 7) -->
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="{% static 'img/apple-touch-icon-precomposed-72.png' %}">
+    <!-- iPhone 6 Plus icon -->
+    <link rel="apple-touch-icon-precomposed" sizes="120x120" href="{% static 'img/apple-touch-icon-precomposed-180.png' %}">
+    <!-- iPhone retina icon (iOS < 7) -->
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="{% static 'img/apple-touch-icon-precomposed-144.png' %}">
+    <!-- iPhone non-retina icon (iOS < 7) -->
+    <link rel="apple-touch-icon-precomposed" sizes="57x57" href="{% static 'img/apple-touch-icon-precomposed-57.png' %}">
+    <link href="{% static 'css/patternfly.min.css' %}" rel="stylesheet" media="screen, print">
+    <link href="{% static 'allthing/css/login.css' %}" rel="stylesheet" media="screen, print">
+    <script src="{% static 'components/jquery/dist/jquery.min.js' %}"></script>
+    <script src="{% static 'components/bootstrap/dist/js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'js/patternfly.min.js' %}"></script>
+  </head>
+  <body>
+    <span id="badge">
+      <img src="{% static 'img/logo.svg' %}" alt="PatternFly logo" />
+    </span>
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-12">
+          <div id="brand">
+            <img src="{% static 'allthing/dist/img/brand.svg' %}" alt="AllThing Performance Monitor">
+          </div><!--/#brand-->
+        </div><!--/.col-*-->
+        <div class="col-sm-7 col-md-6 col-lg-5 login">
+          <!--<form class="form-horizontal" role="form">-->
+          <form class="form-horizontal" action="/at_login/auth/" method="post">
+            <div class="form-group">
+              <label for="inputUsername" class="col-sm-2 col-md-2 control-label">Username</label>
+              <div class="col-sm-10 col-md-10">
+                <input type="text" class="form-control" id="inputUsername" placeholder="" tabindex="1" name="at_username" >
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inputPassword" class="col-sm-2 col-md-2 control-label">Password</label>
+              <div class="col-sm-10 col-md-10">
+                <input type="password" class="form-control" id="inputPassword" placeholder="" tabindex="2" name="at_password" >
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="col-xs-8 col-sm-offset-2 col-sm-6 col-md-offset-2 col-md-6">
+                <div class="checkbox">
+                  <label>
+                    <input type="checkbox" tabindex="3"> Remember username
+                  </label>
+                </div>
+                <span class="help-block"> Forgot <a href="#" tabindex="5">username</a> or <a href="#" tabindex="6">password</a>?</span>
+                <input type="hidden" name="next" value="{{ loginredirect }}" />
+                {% csrf_token %}
+              </div>
+              <div class="col-xs-4 col-sm-4 col-md-4 submit">
+                <button type="submit" class="btn btn-primary btn-lg" tabindex="4">Log In</button>
+              </div>
+            </div>
+          </form>
+        </div><!--/.col-*-->
+        <div class="col-sm-5 col-md-6 col-lg-7 details">
+          <p><strong>Welcome to AllThing!</strong><br/>
+          Please log in to start using it. This tool is for high-resolution monitoring of node performance data.</p>
+          {% ifnotequal message None %}<p style="color:red">{{ message }}</p>{% endifnotequal %}
+        </div><!--/.col-*-->
+      </div><!--/.row-->
+    </div><!--/.container-->
+  </body>
+</html>

@@ -1,8 +1,13 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
 import socket
 import json
 import allthing.settings
+
+
+@login_required
+
 
 def mk_at_query(hostids, attributes):
     """
@@ -57,7 +62,6 @@ def send_query(msg, at_sock):
         sent += at_sock.send(msg.encode('UTF-8')[sent:])
 
     return True
-
 
 def at_master_stats(request):
     """

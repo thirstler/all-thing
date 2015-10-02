@@ -5,16 +5,19 @@
 <head>
 <meta charset="UTF-8">
 <title>{{ html_title }}</title>
-    <link rel="stylesheet" type="text/css" href="{% static 'allthing/main.css' %}" />
+<link rel="stylesheet" type="text/css" href="{% static 'allthing/css/main.css' %}" />
+
+<script src="{% static 'allthing/js/entry.js" />
 </head>
 
 <body>
 
-{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
-<p>allthing</p>
 <form action="/at_login/auth/" method="post">
 {% csrf_token %}
-    <div style="position: absolute;bottom:31%;left:15%;background-color:gray;color:white;border:1px solid blue;">
+    <div style="position: absolute;top:30%;left:15%;background-color:gray;color:white;border:1px solid blue;">
+        {% if message %}
+        <div style="background-color:yellow;color:red; padding: 5px">{{ message }}</div>
+        {% endif %}
         <table style="width:400px">
             <tr>
                 <td colspan="2" style="font-size:22px;padding:10px">Log in:</td>
@@ -34,7 +37,7 @@
             </tr>
         </table>
     </div>
-
+<input type="hidden" name="next" value="{{ loginredirect }}" />
 </form>
 </body>
 

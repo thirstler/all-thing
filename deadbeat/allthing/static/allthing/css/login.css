@@ -2664,7 +2664,7 @@ table.datatable th:active {
 }
 .login-pf .container {
   background-color: #181818;
-  background-color: rgba(0, 0, 0, 0.75);
+  background-color: rgba(0, 0, 0, 0.9);
   clear: right;
   color: #fff;
   padding-bottom: 40px;

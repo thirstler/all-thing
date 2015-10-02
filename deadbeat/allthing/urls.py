@@ -21,5 +21,9 @@ urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
     url(r'^at_client/', include('at_client.urls')),
     url(r'^at_login/', include('at_login.urls')),
-    url(r'^$', include('home.urls'))
+    url(r'^dashboard/', include('dashboard.urls')),
+    url(r'^nodelist/', include('nodelist.urls')),
+    url(r'^reports/', include('reports.urls')),
+    url(r'^settings/', include('settings.urls')),
+    url(r'^$', include('dashboard.urls'))
 ]
