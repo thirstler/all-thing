@@ -18,8 +18,17 @@ def index(request, message=None):
     except:
         redirect = "/"
 
+    msg = msg_status = None
+    if message != None:
+        try:
+            msg_status, msg = message.split(":")
+        except:
+            msg_status = "info"
+            msg = message
+
     context = RequestContext(request, {
-        'message': message,
+        'message': msg,
+        'msg_status': msg_status,
         'html_title': "Log in Required",
         'html_body': 'body test',
         'loginredirect':redirect
@@ -61,7 +70,7 @@ def auth(request):
 
 def at_logout(request):
     logout(request)
-    return index(request, message="logout successful")
+    return index(request, message="success:logout successful")
 
 
 def main_css(request):

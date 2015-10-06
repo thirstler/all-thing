@@ -40,7 +40,10 @@ INSTALLED_APPS = (
     'at_login',
     'at_client',
     'allthing',
-    'dashboard'
+    'dashboard',
+    'nodelist',
+    'reports',
+    'settings'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -118,3 +121,5 @@ AT_CLIENT = {
 }
 
 LOGIN_URL="/at_login/"
+
+SESSION_EXPIRE_AT_BROWSER_CLOSE=True

@@ -31,9 +31,9 @@
     <script src=".{% static 'components/c3/c3.min.js' %}"></script>
     <script src="{% static 'components/d3/d3.min.js' %}"></script>
     <script src="{% static 'js/patternfly.min.js' %}"></script>
-    <script src="{{ js_entry }}"></script>
+    <script src="{% static js_entry %}"></script>
   </head>
-  <body>
+  <body onload="{{ init_func }}">
     <nav class="navbar navbar-default navbar-pf" role="navigation">
       <div class="navbar-header">
         <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse-1">
@@ -91,7 +91,7 @@
             </div>
             <h1>{{ page_heading }}</h1>
           </div>
-          <div id="dashboard_outter"></div>
+          <div id="page_outter"></div>
         </div><!-- /col -->
         <div class="col-sm-4 col-md-3 sidebar-pf sidebar-pf-right">
           <div class="sidebar-header sidebar-header-bleed-left sidebar-header-bleed-right">

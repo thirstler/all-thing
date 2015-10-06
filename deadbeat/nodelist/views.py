@@ -11,7 +11,7 @@ def nodelist(request, message=None):
         'message': message,
         'html_title': "AllThing Dashboard",
         'page_heading': "Node List",
-        'html_body': 'body test',
-        'js_entry': 'dashboard/dashboard.js'
+        'js_entry': 'nodelist/nodelist.js',
+        'init_func': 'nodelist_init();'
     })
     return HttpResponse(template.render(context))

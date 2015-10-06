@@ -19,7 +19,6 @@ def mk_at_query(hostids, attributes):
 
     return "query:"+json.dumps(query_obj)
 
-
 def get_master_sock():
     """
     :rtype : object
@@ -112,6 +111,14 @@ def at_master_dump(request):
     return HttpResponse(json_msg, content_type="application/json")
 
 
+def raw_query(request):
+
+    ats = get_master_sock()
+    send_query("query:{0}".format(request.POST["rawquery"]), ats)
+    json_msg = get_json_msg(ats)
+    ats.close()
+    return HttpResponse(json_msg, content_type="application/json")
+
 def at_master_query(request):
 
     print(request.GET["hostlist"])
@@ -129,7 +136,6 @@ def at_master_query(request):
         return HttpResponse("{}", content_type="application/json")
 
     query = mk_at_query(hostlist, getlist)
-    print(query)
     ats = get_master_sock()
     send_query(query, ats)
     json_msg = get_json_msg(ats)
