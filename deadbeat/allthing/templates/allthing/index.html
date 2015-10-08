@@ -25,15 +25,20 @@
     <link rel="apple-touch-icon-precomposed" sizes="57x57" href="../dist/img/apple-touch-icon-precomposed-57.png">
 
     <link href="{% static 'css/patternfly.min.css' %}" rel="stylesheet" media="screen, print">
-    <link href="{% static 'allthing/css/login.css' %}" rel="stylesheet" media="screen, print">
+    <link href="{% static 'allthing/css/pf_at.css' %}" rel="stylesheet" media="screen, print">
+    <link href="{% static 'allthing/css/at.css' %}" rel="stylesheet" media="screen, print">
     <script src="{% static 'components/jquery/dist/jquery.min.js' %}"></script>
     <script src="{% static 'components/bootstrap/dist/js/bootstrap.min.js' %}"></script>
     <script src=".{% static 'components/c3/c3.min.js' %}"></script>
     <script src="{% static 'components/d3/d3.min.js' %}"></script>
     <script src="{% static 'js/patternfly.min.js' %}"></script>
+    <script src="{% static 'allthing/js/atlib.js' %}"></script>
     <script src="{% static js_entry %}"></script>
+    <script>
+      $(function() { {{ init_func }} });
+    </script>
   </head>
-  <body onload="{{ init_func }}">
+  <body>
     <nav class="navbar navbar-default navbar-pf" role="navigation">
       <div class="navbar-header">
         <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse-1">
@@ -87,7 +92,7 @@
         <div class="col-sm-8 col-md-9">
           <div class="page-header page-header-bleed-right">
             <div class="actions pull-right">
-              <a href="#"><span class="pficon pficon-refresh"></span> Refresh Results</a>
+              <a onclick="script: {{ init_func }}" style="cursor: pointer"><span class="pficon pficon-refresh"></span> Refresh Results</a>
             </div>
             <h1>{{ page_heading }}</h1>
           </div>
@@ -107,5 +112,7 @@
         </div><!-- /col -->
       </div><!-- /row -->
     </div><!-- /container -->
+
+
   </body>
 </html>

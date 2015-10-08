@@ -246,7 +246,9 @@ void write_agent_to_cache(obj_rec_t* data, int new)
 void init_record_tbl(obj_rec_t* data)
 {
     char q[1024];
-    sprintf(q, INIT_RECORD_TABLE, data->uuid);
+    char idstr[37];
+    uuid_unparse(data->uuid, idstr);
+    sprintf(q, INIT_RECORD_TABLE, idstr);
     PQclear(PQexec(pgconn, q));
 
 }

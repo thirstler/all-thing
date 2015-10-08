@@ -112,9 +112,13 @@ def at_master_dump(request):
 
 
 def raw_query(request):
+    try:
+        print(str(request))
+    except:
+        print("Nope")
 
     ats = get_master_sock()
-    send_query("query:{0}".format(request.POST["rawquery"]), ats)
+    send_query("query:{0}".format(request.GET["rawquery"]), ats)
     json_msg = get_json_msg(ats)
     ats.close()
     return HttpResponse(json_msg, content_type="application/json")
