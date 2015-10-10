@@ -12,7 +12,7 @@ def dashboard(request, message=None):
         'message': message,
         'html_title': "AllThing Dashboard",
         'page_heading': "Dashboard",
-        'js_entry': '/static/dashboard/dashboard.js',
+        'js_entry': '/static/dashboard/js/dashboard.js',
         'init_func': 'dashboard_init();'
     })
     return HttpResponse(template.render(context))

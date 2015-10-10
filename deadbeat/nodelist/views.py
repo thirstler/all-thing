@@ -9,9 +9,9 @@ def nodelist(request, message=None):
         'nodelist': True,
         'full_name': "{0}, {1}".format(request.user.last_name, request.user.first_name),
         'message': message,
-        'html_title': "AllThing Dashboard",
+        'html_title': "AllThing Nodelist",
         'page_heading': "Node List",
-        'js_entry': 'nodelist/nodelist.js',
+        'js_entry': 'nodelist/js/nodelist.js',
         'init_func': 'nodelist_init();'
     })
     return HttpResponse(template.render(context))
