@@ -116,7 +116,7 @@ STATICFILES_DIRS = (
 )
 
 AT_CLIENT = {
-    'HOST': 'el7-buildhost',
+    'HOST': 'localhost',
     'PORT': 4569
 }
 

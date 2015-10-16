@@ -9,6 +9,16 @@ var ATQuery = function() {
         uuid: []
     };
 
+    this.alert_err = function(result)
+    {
+        alert(JSON.stringify(result));
+    }
+
+    this.alrt_suc = function(result)
+    {
+        console.log("AJAX success");
+    }
+
     this.add_get = function(get) {
         this.query.get.push(get);
     }
@@ -24,7 +34,8 @@ var ATQuery = function() {
     this.get = function(callback) {
         $.ajax({
             url: "/at_client/raw_query?rawquery="+this.query_string(),
-            success: callback
+            success: callback,
+            error: this.alrt_err
         });
     }
 
@@ -121,10 +132,29 @@ var mkMembar = function(elm, width)
             dw.cache -= wdiff;
         }
 
-        this.mem_used.style.width = dw.used+"px";
-        this.mem_free.style.width = dw.free+"px";
-        this.mem_buff.style.width = dw.buffers+"px";
-        this.mem_cache.style.width = dw.cache+"px";
+        $(this.mem_used).animate({
+            width: dw.used+"px",
+            duration: "slow",
+            easing: "easein"
+        });
+
+        $(this.mem_free).animate({
+            width: dw.free+"px",
+            duration: "slow",
+            easing: "easein"
+        });
+
+        $(this.mem_buff).animate({
+            width: dw.buffers+"px",
+            duration: "slow",
+            easing: "easein"
+        });
+
+        $(this.mem_cache).animate({
+            width: dw.cache+"px",
+            duration: "slow",
+            easing: "easein"
+        });
     }
 }
 

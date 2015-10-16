@@ -28,22 +28,21 @@ def get_master_sock():
     ats.connect((allthing.settings.AT_CLIENT["HOST"], allthing.settings.AT_CLIENT["PORT"]))
     return ats
 
-
 def get_json_msg(at_sock):
     """
     :param at_sock: open socket object
     :return json text message:
     :rtype: str
     """
-    max_chunk_sz = 65536
+    max_chunk_sz = 4096
     msg = b''
     while 1:
         chunk = at_sock.recv(max_chunk_sz)
         msg += chunk
-        if chunk.find(b'\n'): break
+        if chunk[-12:].find(b'<<EOF>>') >= 0: break
 
-    # Chop off the newline
-    return msg[:-1].decode('UTF-8')
+    # Chop off the newline and EOF
+    return msg[:-9].decode('UTF-8')
 
 
 def send_query(msg, at_sock):

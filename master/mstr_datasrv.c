@@ -45,6 +45,7 @@ extern master_config_t *cfg;
 
 #define CONN_CLOSED 1
 #define CONN_OPEN 2
+#define ENDMSG send(fd, "<<EOF>>", 8, 0)
 
 static json_t *getpath(const char *path, json_t *root)
 {
@@ -179,6 +180,7 @@ inline static void q_list_objs(int fd, master_global_data_t *dptr)
     }
     json_ptr = json_dumps(jarbf, JSON_COMPACT);
     send(fd, json_ptr, strlen(json_ptr)+1, 0);
+    ENDMSG;
     free(json_ptr);
     json_array_clear(jarbf);
     json_decref(jarbf);
@@ -209,6 +211,7 @@ inline static void q_show_stats(int fd, master_global_data_t *dptr)
     json_ptr = json_dumps(jobjbf, JSON_COMPACT);
     if(json_ptr != NULL) {
         send(fd, json_ptr, strlen(json_ptr)+1, 0);
+        ENDMSG;
         free(json_ptr);
     }
     json_decref(jobjbf);
@@ -233,6 +236,7 @@ inline static void q_show_config(int fd, master_global_data_t *dptr)
     json_ptr = json_dumps(jobjbf, JSON_COMPACT);
     if(json_ptr != NULL) {
         send(fd, json_ptr, strlen(json_ptr)+1, 0);
+        ENDMSG;
         free(json_ptr);
     }
     json_decref(jobjbf);
@@ -277,6 +281,7 @@ static int query_handler(int fd, master_global_data_t *dptr)
                 strresult = parse_query(jquery, dptr);
                 if(strresult != NULL) {
                     send(fd, strresult, strlen(strresult)+1, 0);
+                    ENDMSG;
                     free(strresult);
                 }
                 json_decref(jquery);

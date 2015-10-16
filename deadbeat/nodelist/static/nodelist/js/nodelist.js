@@ -53,6 +53,7 @@ function render_list(result) {
 
     $("#page_outter").append(tblroot);
 
+    console.log(JSON.stringify(result));
     for(id in result.result) {
 
         noderows[id] = document.createElement("tr");
@@ -73,10 +74,11 @@ function render_list(result) {
     $(function () {
         $('[data-toggle="tooltip"]').tooltip()
     });
+
     // Keep it going
     node_update_interval = setInterval(node_data_refresh, 5000);
-}
 
+}
 
 function start_nodelist(result)
 {
@@ -91,10 +93,10 @@ function start_nodelist(result)
         atq.add_uuid(result[n]["uuid"]);
     }
     atq.get(render_list);
-
 }
 
-function nodelist_init() {
+function nodelist_init()
+{
     $("#page_outter").empty();
     $.ajax({
         url: "/at_client/at_list",
@@ -107,10 +109,10 @@ function node_data_refresh()
     refresh = function(result) {
         poll_ts = result["ts"];
         for(uuid in result.result) {
+            // result needs it's on UUID
             result.result[uuid].uuid = uuid;
             update_noderow(noderows[uuid], result.result[uuid]);
         }
-
     };
     var atq = new ATQuery();
     atq.add_get("cpus");
@@ -125,7 +127,8 @@ function node_data_refresh()
     atq.get(refresh);
 }
 
-function mk_noderow(elm, data) {
+function mk_noderow(elm, data)
+{
     // Set name brick
     elm.name = document.createElement("td");
     elm.name.className = "node_brick";
@@ -164,7 +167,7 @@ function mk_noderow(elm, data) {
     mkMembar(elm.meminf.memgraph, 200);
     elm.appendChild(elm.meminf);
     elm.meminf.appendChild(elm.meminf.memgraph);
-    mem_info_tip(elm.meminf.memgraph, data.uuid);
+    //mem_info_tip(elm.meminf.memgraph, data.uuid);
 
     // Swap
     elm.swinf = document.createElement("td");
