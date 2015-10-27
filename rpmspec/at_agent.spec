@@ -1,6 +1,6 @@
 Name: all-thing-agent
-Version: 0.8.6
-Release: 4%{?dist}
+Version: 0.0.0
+Release: 0%{?dist}
 Summary: All thing monitoring agent	
  
 Group: Monitors		
@@ -73,6 +73,8 @@ else
 fi
 
 %changelog
+* Tue Oct 27 2015 <Jason Russler> jason.russler@gmail.com 0.8.9-2
+- Fixed agent init script
 * Thu Sep 24 2015 <Jason Russler> jason.russler@gmail.com 0.8.9-1
 - New build for v0.8.9
 * Sat Sep 19 2015 <Jason Russler> jason.russler@gmail.com 0.8.8-1

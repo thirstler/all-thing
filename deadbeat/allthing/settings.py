@@ -87,7 +87,7 @@ DATABASES = {
         'NAME': 'allthing',
         'USER': 'allthing',
         'PASSWORD': 'xpio34lm',
-        'HOST': 'el7-buildhost',
+        'HOST': 'proteus.electricmayhem.lap',
     }
 }
 
@@ -116,7 +116,7 @@ STATICFILES_DIRS = (
 )
 
 AT_CLIENT = {
-    'HOST': 'localhost',
+    'HOST': 'proteus.electricmayhem.lap',
     'PORT': 4569
 }
 

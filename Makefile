@@ -58,7 +58,7 @@ uninstall:
 
 # For creating tarballs for SRPM generation, increment with SPEC files. Master
 # and agent are incremented together for now.s
-REL=1\%\{\?dist\}
+REL=2\%\{\?dist\}
 
 srcrpms: at_agent-tar at_master-tar
 	cp rpmspec/at_agent.spec ~/rpmbuild/SPECS 
