@@ -66,7 +66,7 @@ if [[ "$(pgrep ^systemd$)" == "1" ]]; then
 	/bin/rm /usr/lib/systemd/system/at_agent.service
 	/bin/systemctl daemon-reload
 else
-	/usr/sbin/service at_agent stop
+	/sbin/service at_agent stop
 	/sbin/chkconfig at_agent off
 	/sbin/chkconfig --del at_agent
 	/bin/rm /etc/rc.d/init.d/at_agent

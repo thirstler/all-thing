@@ -140,7 +140,8 @@ static void init_hostdata(sysinf_t *host_data)
     memset(hostuuid, '\0', sizeof(uuid_t));
 }
 
-static inline const char* get_mem_val(const char *key, memval_t* val, const char *strptr)
+static inline const char*
+get_mem_val(const char *key, memval_t* val, const char *strptr)
 {
     const char *ring = strptr;
     ring = strstr(ring, key);
@@ -199,6 +200,21 @@ static inline const char* get_mem_val(const char *key, memval_t* val, const char
     if(strstr(meminfbuf, search) != NULL) pollflags |= fv;\
 }
 
+static inline uuid_t dmiid()
+{
+    char *idstr = malloc(sizeof(char)*38);
+    int read;
+    int ps = popen(DMI_HOSTID_CMD, 'r');
+
+    if( getuid() != 0 ) return NULL;
+
+    if(ps == NULL || ps == -1) {
+        return NULL;
+    }
+    read = fread(idstr, 38, 1, ps);
+    uuid_parse
+}
+
 static inline void poll_mem(sysinf_t *host_data)
 {
     static long pollflags = 0;
@@ -254,50 +270,93 @@ static inline void poll_mem(sysinf_t *host_data)
         ADDFLAG("DirectMap1G:", MF_DIRECTMAP1G);
     }
 
-    sscanf(strstr(meminfbuf, "MemTotal:"),"MemTotal: %lu", &host_data->mem.MemTotal);
-    sscanf(strstr(meminfbuf, "MemFree:"), "MemFree: %lu", &host_data->mem.MemFree);
+    sscanf(strstr(meminfbuf, "MemTotal:"),
+            "MemTotal: %lu", &host_data->mem.MemTotal);
+    sscanf(strstr(meminfbuf, "MemFree:"),
+            "MemFree: %lu", &host_data->mem.MemFree);
     if(pollflags & MF_MEMAVAILABLE)
-    	sscanf(strstr(meminfbuf, "MemAvailable:"), "MemAvailable: %lu", &host_data->mem.MemAvailable);
-    sscanf(strstr(meminfbuf, "Buffers:"), "Buffers: %lu", &host_data->mem.Buffers);
-    sscanf(strstr(meminfbuf, "Cached:"), "Cached: %lu", &host_data->mem.Cached);
-    sscanf(strstr(meminfbuf, "SwapCached:"), "SwapCached: %lu", &host_data->mem.SwapCached);
-    sscanf(strstr(meminfbuf, "Active:"), "Active: %lu", &host_data->mem.Active);
-    sscanf(strstr(meminfbuf, "Inactive:"), "Inactive: %lu", &host_data->mem.Inactive);
-    sscanf(strstr(meminfbuf, "Active(anon):"), "Active(anon): %lu", &host_data->mem.Active_anon_);
-    sscanf(strstr(meminfbuf, "Inactive(anon):"), "Inactive(anon): %lu", &host_data->mem.Inactive_anon_);
-    sscanf(strstr(meminfbuf, "Active(file):"), "Active(file): %lu", &host_data->mem.Active_file_);
-    sscanf(strstr(meminfbuf, "Inactive(file):"), "Inactive(file): %lu", &host_data->mem.Inactive_file_);
-    sscanf(strstr(meminfbuf, "Unevictable:"), "Unevictable: %lu", &host_data->mem.Unevictable);
-    sscanf(strstr(meminfbuf, "Mlocked:"), "Mlocked: %lu", &host_data->mem.Mlocked);
-    sscanf(strstr(meminfbuf, "SwapTotal:"), "SwapTotal: %lu", &host_data->mem.SwapTotal);
-    sscanf(strstr(meminfbuf, "SwapFree:"), "SwapFree: %lu", &host_data->mem.SwapFree);
-    sscanf(strstr(meminfbuf, "Dirty:"), "Dirty: %lu", &host_data->mem.Dirty);
-    sscanf(strstr(meminfbuf, "Writeback:"), "Writeback: %lu", &host_data->mem.Writeback);
-    sscanf(strstr(meminfbuf, "AnonPages:"), "AnonPages: %lu", &host_data->mem.AnonPages);
-    sscanf(strstr(meminfbuf, "Mapped:"), "Mapped: %lu", &host_data->mem.Mapped);
-    sscanf(strstr(meminfbuf, "Shmem:"), "Shmem: %lu", &host_data->mem.Shmem);
-    sscanf(strstr(meminfbuf, "Slab:"), "Slab: %lu", &host_data->mem.Slab);
-    sscanf(strstr(meminfbuf, "SReclaimable:"), "SReclaimable: %lu", &host_data->mem.SReclaimable);
-    sscanf(strstr(meminfbuf, "SUnreclaim:"), "SUnreclaim: %lu", &host_data->mem.SUnreclaim);
-    sscanf(strstr(meminfbuf, "KernelStack:"), "KernelStack: %lu", &host_data->mem.KernelStack);
-    sscanf(strstr(meminfbuf, "PageTables:"), "PageTables: %lu", &host_data->mem.PageTables);
-    sscanf(strstr(meminfbuf, "NFS_Unstable:"), "NFS_Unstable: %lu", &host_data->mem.NFS_Unstable);
-    sscanf(strstr(meminfbuf, "Bounce:"), "Bounce: %lu", &host_data->mem.Bounce);
-    sscanf(strstr(meminfbuf, "WritebackTmp:"), "WritebackTmp: %lu", &host_data->mem.WritebackTmp);
-    sscanf(strstr(meminfbuf, "CommitLimit:"), "CommitLimit: %lu", &host_data->mem.CommitLimit);
-    sscanf(strstr(meminfbuf, "Committed_AS:"), "Committed_AS: %lu", &host_data->mem.Committed_AS);
-    sscanf(strstr(meminfbuf, "VmallocTotal:"), "VmallocTotal: %lu", &host_data->mem.VmallocTotal);
-    sscanf(strstr(meminfbuf, "VmallocUsed:"), "VmallocUsed: %lu", &host_data->mem.VmallocUsed);
-    sscanf(strstr(meminfbuf, "VmallocChunk:"), "VmallocChunk: %lu", &host_data->mem.VmallocChunk);
-    sscanf(strstr(meminfbuf, "HardwareCorrupted:"), "HardwareCorrupted: %lu", &host_data->mem.HardwareCorrupted);
-    sscanf(strstr(meminfbuf, "AnonHugePages:"), "AnonHugePages: %lu", &host_data->mem.AnonHugePages);
-    sscanf(strstr(meminfbuf, "HugePages_Total:"), "HugePages_Total: %lu", &host_data->mem.HugePages_Total);
-    sscanf(strstr(meminfbuf, "HugePages_Free:"), "HugePages_Free: %lu", &host_data->mem.HugePages_Free);
-    sscanf(strstr(meminfbuf, "HugePages_Rsvd:"), "HugePages_Rsvd: %lu", &host_data->mem.HugePages_Rsvd);
-    sscanf(strstr(meminfbuf, "HugePages_Surp:"), "HugePages_Surp: %lu", &host_data->mem.HugePages_Surp);
-    sscanf(strstr(meminfbuf, "Hugepagesize:"), "Hugepagesize: %lu", &host_data->mem.Hugepagesize);
-    sscanf(strstr(meminfbuf, "DirectMap4k:"), "DirectMap4k: %lu", &host_data->mem.DirectMap4k);
-    sscanf(strstr(meminfbuf, "DirectMap2M:"), "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
+    	sscanf(strstr(meminfbuf, "MemAvailable:"),
+    	        "MemAvailable: %lu", &host_data->mem.MemAvailable);
+    sscanf(strstr(meminfbuf, "Buffers:"),
+            "Buffers: %lu", &host_data->mem.Buffers);
+    sscanf(strstr(meminfbuf, "Cached:"),
+            "Cached: %lu", &host_data->mem.Cached);
+    sscanf(strstr(meminfbuf, "SwapCached:"),
+            "SwapCached: %lu", &host_data->mem.SwapCached);
+    sscanf(strstr(meminfbuf, "Active:"),
+            "Active: %lu", &host_data->mem.Active);
+    sscanf(strstr(meminfbuf, "Inactive:"),
+            "Inactive: %lu", &host_data->mem.Inactive);
+    sscanf(strstr(meminfbuf, "Active(anon):"),
+            "Active(anon): %lu", &host_data->mem.Active_anon_);
+    sscanf(strstr(meminfbuf, "Inactive(anon):"),
+            "Inactive(anon): %lu", &host_data->mem.Inactive_anon_);
+    sscanf(strstr(meminfbuf, "Active(file):"),
+            "Active(file): %lu", &host_data->mem.Active_file_);
+    sscanf(strstr(meminfbuf, "Inactive(file):"),
+            "Inactive(file): %lu", &host_data->mem.Inactive_file_);
+    sscanf(strstr(meminfbuf, "Unevictable:"),
+            "Unevictable: %lu", &host_data->mem.Unevictable);
+    sscanf(strstr(meminfbuf, "Mlocked:"),
+            "Mlocked: %lu", &host_data->mem.Mlocked);
+    sscanf(strstr(meminfbuf, "SwapTotal:"),
+            "SwapTotal: %lu", &host_data->mem.SwapTotal);
+    sscanf(strstr(meminfbuf, "SwapFree:"),
+                "SwapFree: %lu", &host_data->mem.SwapFree);
+    sscanf(strstr(meminfbuf, "Dirty:"),
+            "Dirty: %lu", &host_data->mem.Dirty);
+    sscanf(strstr(meminfbuf, "Writeback:"),
+            "Writeback: %lu", &host_data->mem.Writeback);
+    sscanf(strstr(meminfbuf, "AnonPages:"),
+            "AnonPages: %lu", &host_data->mem.AnonPages);
+    sscanf(strstr(meminfbuf, "Mapped:"),
+            "Mapped: %lu", &host_data->mem.Mapped);
+    sscanf(strstr(meminfbuf, "Shmem:"),
+            "Shmem: %lu", &host_data->mem.Shmem);
+    sscanf(strstr(meminfbuf, "Slab:"),
+            "Slab: %lu", &host_data->mem.Slab);
+    sscanf(strstr(meminfbuf, "SReclaimable:"),
+            "SReclaimable: %lu", &host_data->mem.SReclaimable);
+    sscanf(strstr(meminfbuf, "SUnreclaim:"),
+            "SUnreclaim: %lu", &host_data->mem.SUnreclaim);
+    sscanf(strstr(meminfbuf, "KernelStack:"),
+            "KernelStack: %lu", &host_data->mem.KernelStack);
+    sscanf(strstr(meminfbuf, "PageTables:"),
+            "PageTables: %lu", &host_data->mem.PageTables);
+    sscanf(strstr(meminfbuf, "NFS_Unstable:"),
+            "NFS_Unstable: %lu", &host_data->mem.NFS_Unstable);
+    sscanf(strstr(meminfbuf, "Bounce:"),
+            "Bounce: %lu", &host_data->mem.Bounce);
+    sscanf(strstr(meminfbuf, "WritebackTmp:"),
+            "WritebackTmp: %lu", &host_data->mem.WritebackTmp);
+    sscanf(strstr(meminfbuf, "CommitLimit:"),
+            "CommitLimit: %lu", &host_data->mem.CommitLimit);
+    sscanf(strstr(meminfbuf, "Committed_AS:"),
+            "Committed_AS: %lu", &host_data->mem.Committed_AS);
+    sscanf(strstr(meminfbuf, "VmallocTotal:"),
+            "VmallocTotal: %lu", &host_data->mem.VmallocTotal);
+    sscanf(strstr(meminfbuf, "VmallocUsed:"),
+            "VmallocUsed: %lu", &host_data->mem.VmallocUsed);
+    sscanf(strstr(meminfbuf, "VmallocChunk:"),
+            "VmallocChunk: %lu", &host_data->mem.VmallocChunk);
+    sscanf(strstr(meminfbuf, "HardwareCorrupted:"),
+            "HardwareCorrupted: %lu", &host_data->mem.HardwareCorrupted);
+    sscanf(strstr(meminfbuf, "AnonHugePages:"),
+            "AnonHugePages: %lu", &host_data->mem.AnonHugePages);
+    sscanf(strstr(meminfbuf, "HugePages_Total:"),
+            "HugePages_Total: %lu", &host_data->mem.HugePages_Total);
+    sscanf(strstr(meminfbuf, "HugePages_Free:"),
+            "HugePages_Free: %lu", &host_data->mem.HugePages_Free);
+    sscanf(strstr(meminfbuf, "HugePages_Rsvd:"),
+            "HugePages_Rsvd: %lu", &host_data->mem.HugePages_Rsvd);
+    sscanf(strstr(meminfbuf, "HugePages_Surp:"),
+            "HugePages_Surp: %lu", &host_data->mem.HugePages_Surp);
+    sscanf(strstr(meminfbuf, "Hugepagesize:"),
+            "Hugepagesize: %lu", &host_data->mem.Hugepagesize);
+    sscanf(strstr(meminfbuf, "DirectMap4k:"),
+            "DirectMap4k: %lu", &host_data->mem.DirectMap4k);
+    sscanf(strstr(meminfbuf, "DirectMap2M:"),
+            "DirectMap2M: %lu", &host_data->mem.DirectMap2M);
 
     if(pollflags & MF_DIRECTMAP1G)
         sscanf(strstr(meminfbuf, "DirectMap1G:"), "DirectMap1G: %lu",
@@ -398,7 +457,8 @@ inline int get_poll_bits(int count, agent_config_t *cfg)
     return sw;
 }
 
-static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw)
+static inline char*
+jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw)
 {
     fsinf_t *fsptr;
     iface_inf_t *ifaceptr;
@@ -476,7 +536,8 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
             devptr =  cJSON_CreateObject();
 
             cJSON_AddStringToObject(devptr, "dev", ifaceptr->dev);
-            cJSON_AddNumberToObject(devptr, "c|rx_packets", ifaceptr->rx_packets);
+            cJSON_AddNumberToObject(devptr, "c|rx_packets",
+                                                        ifaceptr->rx_packets);
             cJSON_AddNumberToObject(devptr, "c|rx_bytes", ifaceptr->rx_bytes);
             cJSON_AddNumberToObject(devptr, "c|rx_errs", ifaceptr->rx_errs);
             cJSON_AddNumberToObject(devptr, "c|rx_drop", ifaceptr->rx_drop);
@@ -484,7 +545,8 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
             cJSON_AddNumberToObject(devptr, "c|rx_frame", ifaceptr->rx_frame);
             cJSON_AddNumberToObject(devptr, "c|rx_comp", ifaceptr->rx_comp);
             cJSON_AddNumberToObject(devptr, "c|rx_multi", ifaceptr->rx_multi);
-            cJSON_AddNumberToObject(devptr, "c|tx_packets", ifaceptr->tx_packets);
+            cJSON_AddNumberToObject(devptr, "c|tx_packets",
+                                                        ifaceptr->tx_packets);
             cJSON_AddNumberToObject(devptr, "c|tx_bytes", ifaceptr->tx_bytes);
             cJSON_AddNumberToObject(devptr, "c|tx_errs", ifaceptr->tx_errs);
             cJSON_AddNumberToObject(devptr, "c|tx_drop", ifaceptr->tx_drop);
@@ -514,18 +576,30 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
             /* Mow this over every iteration */
             devptr =  cJSON_CreateObject();
 
-            cJSON_AddStringToObject(devptr, "dev", iodevptr->dev);
-            cJSON_AddNumberToObject(devptr, "c|reads", iodevptr->reads);
-            cJSON_AddNumberToObject(devptr, "c|read_sectors", iodevptr->read_sectors);
-            cJSON_AddNumberToObject(devptr, "c|reads_merged", iodevptr->reads_merged);
-            cJSON_AddNumberToObject(devptr, "c|msec_reading", iodevptr->msec_reading);
-            cJSON_AddNumberToObject(devptr, "c|writes", iodevptr->writes);
-            cJSON_AddNumberToObject(devptr, "c|write_sectors", iodevptr->write_sectors);
-            cJSON_AddNumberToObject(devptr, "c|writes_merged", iodevptr->writes_merged);
-            cJSON_AddNumberToObject(devptr, "c|msec_writing", iodevptr->msec_writing);
-            cJSON_AddNumberToObject(devptr, "current_ios", iodevptr->current_ios);
-            cJSON_AddNumberToObject(devptr, "c|msec_ios", iodevptr->msec_ios);
-            cJSON_AddNumberToObject(devptr, "c|weighted_ios", iodevptr->weighted_ios);
+            cJSON_AddStringToObject(devptr, "dev", 
+                    iodevptr->dev);
+            cJSON_AddNumberToObject(devptr, "c|reads",
+                    iodevptr->reads);
+            cJSON_AddNumberToObject(devptr, "c|read_sectors",
+                    iodevptr->read_sectors);
+            cJSON_AddNumberToObject(devptr, "c|reads_merged",
+                    iodevptr->reads_merged);
+            cJSON_AddNumberToObject(devptr, "c|msec_reading",
+                    iodevptr->msec_reading);
+            cJSON_AddNumberToObject(devptr, "c|writes",
+                    iodevptr->writes);
+            cJSON_AddNumberToObject(devptr, "c|write_sectors",
+                    iodevptr->write_sectors);
+            cJSON_AddNumberToObject(devptr, "c|writes_merged",
+                    iodevptr->writes_merged);
+            cJSON_AddNumberToObject(devptr, "c|msec_writing",
+                    iodevptr->msec_writing);
+            cJSON_AddNumberToObject(devptr, "current_ios",
+                    iodevptr->current_ios);
+            cJSON_AddNumberToObject(devptr, "c|msec_ios",
+                    iodevptr->msec_ios);
+            cJSON_AddNumberToObject(devptr, "c|weighted_ios",
+                    iodevptr->weighted_ios);
             cJSON_AddItemToArray(iodevs, devptr);
 
             iodevptr = iodevptr->next;
@@ -555,10 +629,13 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         cJSON_AddNumberToObject(cputtls, "c|s_irq", host_data->cpu_sirq);
         cJSON_AddNumberToObject(cputtls, "c|steal", host_data->cpu_steal);
         cJSON_AddNumberToObject(cputtls, "c|guest", host_data->cpu_guest);
-        cJSON_AddNumberToObject(cputtls, "c|n_guest", host_data->cpu_guest_nice);
+        cJSON_AddNumberToObject(cputtls, "c|n_guest",
+                                                    host_data->cpu_guest_nice);
         cJSON_AddNumberToObject(cputtls, "c|intrps", host_data->interrupts);
-        cJSON_AddNumberToObject(cputtls, "c|s_intrps", host_data->s_interrupts);
-        cJSON_AddNumberToObject(cputtls, "c|ctxt", host_data->context_switches);
+        cJSON_AddNumberToObject(cputtls, "c|s_intrps",
+                                                    host_data->s_interrupts);
+        cJSON_AddNumberToObject(cputtls, "c|ctxt",
+                                                host_data->context_switches);
         cJSON_AddItemToObject(root, "cpu_ttls", cputtls);
 
         cJSON *cpus = cJSON_CreateArray();
@@ -619,16 +696,21 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         cJSON *mem = cJSON_CreateObject();
         cJSON_AddNumberToObject(mem, "MemTotal", host_data->mem.MemTotal);
         cJSON_AddNumberToObject(mem, "MemFree", host_data->mem.MemFree);
-        cJSON_AddNumberToObject(mem, "MemAvailable", host_data->mem.MemAvailable);
+        cJSON_AddNumberToObject(mem, "MemAvailable",
+                host_data->mem.MemAvailable);
         cJSON_AddNumberToObject(mem, "Buffers", host_data->mem.Buffers);
         cJSON_AddNumberToObject(mem, "Cached", host_data->mem.Cached);
         cJSON_AddNumberToObject(mem, "SwapCached", host_data->mem.SwapCached);
         cJSON_AddNumberToObject(mem, "Active", host_data->mem.Active);
         cJSON_AddNumberToObject(mem, "Inactive", host_data->mem.Inactive);
-        cJSON_AddNumberToObject(mem, "Active(anon)", host_data->mem.Active_anon_);
-        cJSON_AddNumberToObject(mem, "Inactive(anon)", host_data->mem.Inactive_anon_);
-        cJSON_AddNumberToObject(mem, "Active(file)", host_data->mem.Active_file_);
-        cJSON_AddNumberToObject(mem, "Inactive(file)", host_data->mem.Inactive_file_);
+        cJSON_AddNumberToObject(mem, "Active(anon)",
+                host_data->mem.Active_anon_);
+        cJSON_AddNumberToObject(mem, "Inactive(anon)",
+                host_data->mem.Inactive_anon_);
+        cJSON_AddNumberToObject(mem, "Active(file)",
+                host_data->mem.Active_file_);
+        cJSON_AddNumberToObject(mem, "Inactive(file)",
+                host_data->mem.Inactive_file_);
         cJSON_AddNumberToObject(mem, "Unevictable", host_data->mem.Unevictable);
         cJSON_AddNumberToObject(mem, "Mlocked", host_data->mem.Mlocked);
         cJSON_AddNumberToObject(mem, "SwapTotal", host_data->mem.SwapTotal);
@@ -639,25 +721,38 @@ static inline char* jsonify(sysinf_t *host_data, agent_config_t *cfg, int pollsw
         cJSON_AddNumberToObject(mem, "Mapped", host_data->mem.Mapped);
         cJSON_AddNumberToObject(mem, "Shmem", host_data->mem.Shmem);
         cJSON_AddNumberToObject(mem, "Slab", host_data->mem.Slab);
-        cJSON_AddNumberToObject(mem, "SReclaimable", host_data->mem.SReclaimable);
+        cJSON_AddNumberToObject(mem, "SReclaimable",
+                                                host_data->mem.SReclaimable);
         cJSON_AddNumberToObject(mem, "SUnreclaim", host_data->mem.SUnreclaim);
         cJSON_AddNumberToObject(mem, "KernelStack", host_data->mem.KernelStack);
         cJSON_AddNumberToObject(mem, "PageTables", host_data->mem.PageTables);
-        cJSON_AddNumberToObject(mem, "NFS_Unstable", host_data->mem.NFS_Unstable);
+        cJSON_AddNumberToObject(mem, "NFS_Unstable",
+                host_data->mem.NFS_Unstable);
         cJSON_AddNumberToObject(mem, "Bounce", host_data->mem.Bounce);
-        cJSON_AddNumberToObject(mem, "WritebackTmp", host_data->mem.WritebackTmp);
+        cJSON_AddNumberToObject(mem, "WritebackTmp",
+                host_data->mem.WritebackTmp);
         cJSON_AddNumberToObject(mem, "CommitLimit", host_data->mem.CommitLimit);
-        cJSON_AddNumberToObject(mem, "Committed_AS", host_data->mem.Committed_AS);
-        cJSON_AddNumberToObject(mem, "VmallocTotal", host_data->mem.VmallocTotal);
+        cJSON_AddNumberToObject(mem, "Committed_AS",
+                host_data->mem.Committed_AS);
+        cJSON_AddNumberToObject(mem, "VmallocTotal",
+                host_data->mem.VmallocTotal);
         cJSON_AddNumberToObject(mem, "VmallocUsed", host_data->mem.VmallocUsed);
-        cJSON_AddNumberToObject(mem, "VmallocChunk", host_data->mem.VmallocChunk);
-        cJSON_AddNumberToObject(mem, "HardwareCorrupted", host_data->mem.HardwareCorrupted);
-        cJSON_AddNumberToObject(mem, "AnonHugePages", host_data->mem.AnonHugePages);
-        cJSON_AddNumberToObject(mem, "HugePages_Total", host_data->mem.HugePages_Total);
-        cJSON_AddNumberToObject(mem, "HugePages_Free", host_data->mem.HugePages_Free);
-        cJSON_AddNumberToObject(mem, "HugePages_Rsvd", host_data->mem.HugePages_Rsvd);
-        cJSON_AddNumberToObject(mem, "HugePages_Surp", host_data->mem.HugePages_Surp);
-        cJSON_AddNumberToObject(mem, "Hugepagesize", host_data->mem.Hugepagesize);
+        cJSON_AddNumberToObject(mem, "VmallocChunk",
+                host_data->mem.VmallocChunk);
+        cJSON_AddNumberToObject(mem, "HardwareCorrupted",
+                host_data->mem.HardwareCorrupted);
+        cJSON_AddNumberToObject(mem, "AnonHugePages",
+                host_data->mem.AnonHugePages);
+        cJSON_AddNumberToObject(mem, "HugePages_Total",
+                host_data->mem.HugePages_Total);
+        cJSON_AddNumberToObject(mem, "HugePages_Free",
+                host_data->mem.HugePages_Free);
+        cJSON_AddNumberToObject(mem, "HugePages_Rsvd",
+                host_data->mem.HugePages_Rsvd);
+        cJSON_AddNumberToObject(mem, "HugePages_Surp",
+                host_data->mem.HugePages_Surp);
+        cJSON_AddNumberToObject(mem, "Hugepagesize",
+                host_data->mem.Hugepagesize);
         cJSON_AddNumberToObject(mem, "DirectMap4k", host_data->mem.DirectMap4k);
         cJSON_AddNumberToObject(mem, "DirectMap2M", host_data->mem.DirectMap2M);
         cJSON_AddNumberToObject(mem, "DirectMap1G", host_data->mem.DirectMap1G);
@@ -762,7 +857,8 @@ static void cleanup(sysinf_t *host_data, agent_config_t *cfg)
         host_data->cpu = del_cpu(host_data->cpu, host_data->cpu->cpu);
     }
     while(host_data->fsinf != NULL) {
-        host_data->fsinf = del_fs(host_data->fsinf, host_data->fsinf->mountpoint);
+        host_data->fsinf = del_fs(host_data->fsinf,
+                                                host_data->fsinf->mountpoint);
     }
     while(host_data->iface != NULL) {
         host_data->iface = del_iface(host_data->iface, host_data->iface->dev);
@@ -888,20 +984,21 @@ int main(int argc, char *argv[])
     set_cfg_defaults(&cfg);
 
     /* Create config file strings */
-    cfgstrs[0] = malloc(strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
+    cfgstrs[0] = malloc(
+                    strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
     sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
 
     /* Create config file strings */
-	cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
-	sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
+    cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
+    sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
 
     /* Now overwrite with configuration files */
     if (ini_parse(cfgstrs[0], config_handler, &cfg) < 0) {
         syslog(LOG_ERR, "Can't load '%s'\n", cfgstrs[0]);
     }
-	if (ini_parse(cfgstrs[1], config_handler, &cfg) < 0) {
-		syslog(LOG_ERR, "Can't load '%s'\n", cfgstrs[1]);
-	}
+    if (ini_parse(cfgstrs[1], config_handler, &cfg) < 0) {
+        syslog(LOG_ERR, "Can't load '%s'\n", cfgstrs[1]);
+    }
 
     /* See what the command line has to say.... */
     while ((rc = getopt (argc, argv, "hDt:p:r:c:i:")) != -1) {
@@ -922,18 +1019,20 @@ int main(int argc, char *argv[])
             cfg.master_rate = atoi(optarg)*1000000;
             break;
         case 'c':
-        	free(cfg.config_dir);
-        	free(cfgstrs[0]);
-        	free(cfgstrs[1]);
+            free(cfg.config_dir);
+            free(cfgstrs[0]);
+            free(cfgstrs[1]);
 
             cfg.config_dir = strdup(optarg);
             /* Create config file strings */
-			cfgstrs[0] = malloc(strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
-			sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
+            cfgstrs[0] = malloc(
+                    strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
+            sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
 
-			/* Create config file strings */
-			cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
-			sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
+            /* Create config file strings */
+            cfgstrs[1] = malloc(
+                    strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
+            sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
 
             break;
         case '?':
@@ -1053,11 +1152,13 @@ int main(int argc, char *argv[])
 
 			cfg.config_dir = strdup(optarg);
 			/* Create config file strings */
-			cfgstrs[0] = malloc(strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
+			cfgstrs[0] = malloc(
+			        strlen(cfg.config_dir) + strlen(ALLTHING_CONFIG_FILE) + 1);
 			sprintf(cfgstrs[0], "%s%s", cfg.config_dir, ALLTHING_CONFIG_FILE);
 
 			/* Create config file strings */
-			cfgstrs[1] = malloc(strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
+			cfgstrs[1] = malloc(
+			        strlen(cfg.config_dir) + strlen(AGENT_CONFIG_FILE) + 1);
 			sprintf(cfgstrs[1], "%s%s", cfg.config_dir, AGENT_CONFIG_FILE);
 
             init_hostdata(host_data);
@@ -1076,3 +1177,4 @@ int main(int argc, char *argv[])
 
     return EXIT_SUCCESS;
 }
+

@@ -85,7 +85,6 @@ var mkMembar = function(elm, width)
 {
     elm.style.width = width+"px";
     elm.style.backgroundColor = "#ededed";
-
     elm.meminfo = null;
 
     elm.mem_used = document.createElement("div");

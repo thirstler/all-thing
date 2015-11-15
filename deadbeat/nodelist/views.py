@@ -15,3 +15,4 @@ def nodelist(request, message=None):
         'init_func': 'nodelist_init();'
     })
     return HttpResponse(template.render(context))
+    

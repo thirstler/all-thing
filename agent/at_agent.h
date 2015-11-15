@@ -47,6 +47,7 @@
 #define AGENT_PROFILE_DIR "/var/db/allthing"
 #define AGENT_HOSTID_FILE "host_id"
 #define AGENT_HOSTUUID_FILE "host_uuid"
+#define DMI_HOSTID_CMD "dmidecode|grep UUID|gawk '{print $2}'|tr [:upper:] [:lower:]"
 
 /* random defaults */
 #define MAX_HOSTNAME_SIZE 255
