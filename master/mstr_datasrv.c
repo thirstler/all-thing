@@ -79,8 +79,9 @@ static char* parse_query(json_t *query, master_global_data_t *dptr)
             *answerobjs, \
             *o_objtmp, \
             *i_objtmp, \
-            *hostarr = json_object_get(query, "uuid"),
-            *queryarr = json_object_get(query, "get");
+            *hostarr = json_object_get(query, "uuid"), \
+            *queryarr = json_object_get(query, "get"), \
+            *aformat = json_object_get(query, "format");
     size_t o_index, i_index;
     struct timeval ts;
     const char *strtmp;
@@ -153,7 +154,13 @@ static char* parse_query(json_t *query, master_global_data_t *dptr)
     }
 
     if(answerobj != NULL) {
-        result_str = json_dumps(answerobj, JSON_COMPACT);
+        if (aformat != NULL ) {
+            if (strcmp(json_string_value(aformat), "indent"))
+                result_str = json_dumps(answerobj, JSON_COMPACT);
+            else result_str = json_dumps(answerobj, JSON_INDENT(2));
+        } else {
+            result_str = json_dumps(answerobj, JSON_COMPACT);
+        }
         json_decref(answerobjs);
         json_decref(answerobj);
         return result_str;

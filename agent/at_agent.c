@@ -200,6 +200,7 @@ get_mem_val(const char *key, memval_t* val, const char *strptr)
     if(strstr(meminfbuf, search) != NULL) pollflags |= fv;\
 }
 
+/*
 static inline uuid_t dmiid()
 {
     char *idstr = malloc(sizeof(char)*38);
@@ -212,8 +213,8 @@ static inline uuid_t dmiid()
         return NULL;
     }
     read = fread(idstr, 38, 1, ps);
-    uuid_parse
 }
+*/
 
 static inline void poll_mem(sysinf_t *host_data)
 {

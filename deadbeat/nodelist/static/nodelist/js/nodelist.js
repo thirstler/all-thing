@@ -86,6 +86,8 @@ function start_nodelist(result)
     atq.add_get("cpus");
     atq.add_get("sysload");
     atq.add_get("rates.cpu_ttls");
+    atq.add_get("rates.iodev");
+    atq.add_get("rates.iface");
     atq.add_get("ts");
     atq.add_get("memory");
     atq.add_get("misc");
@@ -118,6 +120,8 @@ function node_data_refresh()
     atq.add_get("cpus");
     atq.add_get("sysload");
     atq.add_get("rates.cpu_ttls");
+    atq.add_get("rates.iodev");
+    atq.add_get("rates.iface");
     atq.add_get("ts");
     atq.add_get("memory");
     atq.add_get("misc");
@@ -182,12 +186,30 @@ function mk_noderow(elm, data)
     elm.netinf.className = "node_brick";
     elm.appendChild(elm.netinf);
     elm.netinf.innerHTML = "?";
+    elm.netinf.parseIO = function(netdevs) {
+        var oct_in = 0;
+        var oct_ou = 0;
+        for(dev in netdevs) {
+            oct_in += netdevs[dev].rx_bytes;
+            oct_ou += netdevs[dev].tx_bytes;
+        }
+        elm.netinf.innerHTML = oct_in.toFixed(2)+" | "+oct_ou.toFixed(2);
+    };
 
     // BlkIO
     elm.blkio = document.createElement("td");
     elm.blkio.className = "node_brick";
     elm.appendChild(elm.blkio);
     elm.blkio.innerHTML = "?";
+    elm.blkio.parseIO = function(blockdevs) {
+        var iops_r = 0;
+        var iops_w = 0;
+        for(dev in blockdevs) {
+            iops_r += blockdevs[dev].reads;
+            iops_w += blockdevs[dev].writes;
+        }
+        elm.blkio.innerHTML = iops_r.toFixed(2)+" | "+iops_w.toFixed(2);
+    };
 
     // Last check-in
     elm.chk = document.createElement("td");
@@ -237,6 +259,8 @@ function update_noderow(elm, data) {
     elm.cpu.innerHTML = ((data["rates.cpu_ttls"]["user"] + data["rates.cpu_ttls"]["system"])/data["cpus"].length).toFixed(2)+"%";
     elm.meminf.memgraph.update(data["memory"]);
     elm.swinf.swgr.update(data["memory"]);
+    elm.netinf.parseIO(data["rates.iface"]);
+    elm.blkio.parseIO(data["rates.iodev"]);
     timechk(data["ts"], elm.chk);
 }
 

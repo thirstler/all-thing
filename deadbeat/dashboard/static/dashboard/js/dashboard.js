@@ -6,3 +6,4 @@ function dashboard_init() {
         }
     });
 }
+
